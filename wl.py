@@ -19,6 +19,10 @@ def lastday(date):
                                date.month + 1 if date.month != 12 else 1, 1)
     return (next_first - datetime.timedelta(days=1)).day
 
+def entry_exists(date):
+    path = os.path.join(os.path.expanduser(data_dir), str(date))
+    return os.path.exists(path)
+
 def main(stdscr):
     today = datetime.date.today()
     first = datetime.date(today.year, today.month, 1)
@@ -29,7 +33,8 @@ def main(stdscr):
     last = lastday(first)
     day = first.day
     while day <= last:
-        week.append((x, y, day))
+        date = datetime.date(today.year, today.month, day)
+        week.append((x, y, entry_exists(date), day))
         if len(week) == 7:
             month.append(week)
             week = []
@@ -45,17 +50,18 @@ def main(stdscr):
         for d_ind, day in enumerate(week):
             if day is None:
                 continue
-            x, y, d = day
-            stdscr.addstr(y, x, '%2d' % d)
+            x, y, ee, d = day
+            attr = curses.A_BOLD if ee else 0
+            stdscr.addstr(y, x, '%2d' % d, attr)
             if d == today.day:
                 selected = (d_ind, w_ind)
     def change(selected, highlight):
         d_ind, w_ind = selected
-        x, y, d = month[w_ind][d_ind]
-        args = [y, x, '%2d' % d]
+        x, y, ee, d = month[w_ind][d_ind]
+        attr = curses.A_BOLD if ee else 0
         if highlight:
-            args.append(curses.A_REVERSE)
-        stdscr.addstr(*args)
+            attr += curses.A_REVERSE
+        stdscr.addstr(y, x, '%2d' % d, attr)
         stdscr.refresh()
     change(selected, True)
     while 1:
@@ -93,8 +99,11 @@ def main(stdscr):
                     w_ind -= 1
         elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
             d_ind, w_ind = selected
-            x, y, d = month[w_ind][d_ind]
-            edit_date(datetime.date(today.year, today.month, d))
+            x, y, ee, d = month[w_ind][d_ind]
+            date = datetime.date(today.year, today.month, d)
+            edit_date(date)
+            month[w_ind][d_ind] = (x, y, entry_exists(date), d)
+            change(selected, True)
         if (d_ind, w_ind) != selected:
             change(selected, False)
             selected = (d_ind, w_ind)
