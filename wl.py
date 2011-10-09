@@ -23,21 +23,25 @@ def entry_exists(date):
     path = os.path.join(data_dir, str(date))
     return os.path.exists(path)
 
-def get_metadata_for_month(year, month):
-    files = [fn for fn in os.listdir(data_dir)
-             if fn.startswith('%d-%d-' % (year, month))]
-    data = {}
-    for fn in files:
-        day = int(fn.split('-')[-1])
-        lines, words = 0, 0
-        path = os.path.join(data_dir, fn)
+def get_metadata(date):
+    path = os.path.join(data_dir, str(date))
+    lines, words = 0, 0
+    try:
         with open(path) as f:
             for line in f:
                 if not line.strip():
                     continue
                 lines += 1
                 words += len(line.split())
-        data[day] = (lines, words, os.path.getsize(path))
+    except IOError:
+        return None
+    return (lines, words, os.path.getsize(path))
+
+
+def get_metadata_for_month(year, month):
+    data = {}
+    for day in range(1, lastday(year, month) + 1):
+        data[day] = get_metadata(datetime.date(year, month, day))
     return data
 
 def show_metadata(date, metadata, window):
@@ -45,7 +49,7 @@ def show_metadata(date, metadata, window):
     window.addstr(1, 1, '%s %d, %d' % (date.strftime('%B'), date.day, date.year))
     try:
         m = '%d lines, %d words, %d bytes' % (metadata[date.day])
-    except KeyError:
+    except TypeError:
         m = 'No entry for selected date'
     window.addstr(2, 1, m)
     window.addstr(6, 1, '\n'.join(textwrap.wrap('Use arrow keys to navigate through dates, press Enter to '
@@ -94,6 +98,8 @@ def main(stdscr):
             date = cal.get_current_date()
             edit_date(date)
             cal.set_entry_exists_for_current_day(entry_exists(date))
+            metadata[date.day] = get_metadata(date)
+            show_metadata(date, metadata, nw)
 
 def parse_date(date):
     if date == 'today':
@@ -134,8 +140,12 @@ def edit_date(date):
     with open(tmpfn) as f:
         new_content = f.read()
 
-    with open(path, 'w') as f:
-        f.write(new_content)
+    if new_content:
+        with open(path, 'w') as f:
+            f.write(new_content)
+    else:
+        if os.path.exists(path):
+            os.remove(path)
 
     os.remove(tmpfn)
 
