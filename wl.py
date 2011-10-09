@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import textwrap
 from calendar import Calendar
 
 locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
@@ -15,20 +16,47 @@ locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
 data_dir = '~/.wl'
 editor = 'gvim -f'
 
+data_dir = os.path.expanduser(data_dir)
+
 
 def entry_exists(date):
-    path = os.path.join(os.path.expanduser(data_dir), str(date))
+    path = os.path.join(data_dir, str(date))
     return os.path.exists(path)
+
+def get_metadata_for_month(year, month):
+    files = [fn for fn in os.listdir(data_dir)
+             if fn.startswith('%d-%d-' % (year, month))]
+    data = {}
+    for fn in files:
+        day = int(fn.split('-')[-1])
+        lines, words = 0, 0
+        path = os.path.join(data_dir, fn)
+        with open(path) as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                lines += 1
+                words += len(line.split())
+        data[day] = (lines, words, os.path.getsize(path))
+    return data
 
 def main(stdscr):
     today = datetime.date.today()
     cal = Calendar(today.year, today.month)
     cal.draw(stdscr, 1, 1, entry_exists)
-    nw = curses.newwin(10, 30, 0, 30)
+    metadata = get_metadata_for_month(today.year, today.month)
+    nw = curses.newwin(10, 50, 0, 30)
     def ph(cal):
         date = cal.get_current_date()
         nw.clear()
         nw.addstr(1, 1, '%s %d, %d' % (date.strftime('%B'), date.day, date.year))
+        try:
+            m = '%d lines, %d words, %d bytes' % (metadata[date.day])
+        except KeyError:
+            m = 'No entry for selected date'
+        nw.addstr(2, 1, m)
+        nw.addstr(6, 1, '\n'.join(textwrap.wrap('Use arrow keys to navigate through dates, press Enter to '
+                        'edit or create entry for selected date.', 48)))
         nw.refresh()
     ph(cal)
     while 1:
@@ -68,16 +96,15 @@ def parse_date(date):
 
 def edit_date(date):
     filename = str(date)
-    dir_path = os.path.expanduser(data_dir)
-    if os.path.isfile(dir_path):
-        print '%s is not a directory' % dir_path
+    if os.path.isfile(data_dir):
+        print '%s is not a directory' % data_dir
         sys.exit()
     try:
-        os.mkdir(dir_path)
+        os.mkdir(data_dir)
     except OSError:
         pass
 
-    path = os.path.join(dir_path, filename)
+    path = os.path.join(data_dir, filename)
     if os.path.exists(path):
         with open(path) as f:
             content = f.read()
