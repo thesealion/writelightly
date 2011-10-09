@@ -129,18 +129,27 @@ def edit_date(date):
     if os.path.exists(path):
         with open(path) as f:
             content = f.read()
+        new = False
     else:
-        content = ''
+        content = '\n'
+        new = True
 
     _, tmpfn = tempfile.mkstemp(text=True)
+
+    action = 'new entry' if new else 'editing entry'
+    header = '#%s %d, %d: %s\n' % (date.strftime('%B'), date.day, date.year,
+                                   action)
     with open(tmpfn, 'w') as f:
+        f.write(header)
         f.write(content)
     exit_code = subprocess.call('%s %s' % (editor, tmpfn), shell=True)
 
     with open(tmpfn) as f:
         new_content = f.read()
+    if new_content.startswith(header):
+        new_content = new_content.replace(header, '', 1)
 
-    if new_content:
+    if new_content.strip():
         with open(path, 'w') as f:
             f.write(new_content)
     else:
