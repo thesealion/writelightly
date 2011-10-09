@@ -24,18 +24,29 @@ def main(stdscr):
     today = datetime.date.today()
     cal = Calendar(today.year, today.month)
     cal.draw(stdscr, 1, 1, entry_exists)
+    nw = curses.newwin(10, 30, 0, 30)
+    def ph(cal):
+        date = cal.get_current_date()
+        nw.clear()
+        nw.addstr(1, 1, '%s %d, %d' % (date.strftime('%B'), date.day, date.year))
+        nw.refresh()
+    ph(cal)
     while 1:
         c = stdscr.getch()
         if c == ord('q'):
             break
         if c in (ord('h'), curses.KEY_LEFT):
             cal.move_left()
+            ph(cal)
         elif c in (ord('l'), curses.KEY_RIGHT):
             cal.move_right()
+            ph(cal)
         elif c in (ord('j'), curses.KEY_DOWN):
             cal.move_down()
+            ph(cal)
         elif c in (ord('k'), curses.KEY_UP):
             cal.move_up()
+            ph(cal)
         elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
             date = cal.get_current_date()
             edit_date(date)
