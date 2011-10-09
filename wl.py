@@ -9,7 +9,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
-from calendar import Calendar
+from calendar import Calendar, lastday
 
 locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
 
@@ -40,41 +40,56 @@ def get_metadata_for_month(year, month):
         data[day] = (lines, words, os.path.getsize(path))
     return data
 
+def show_metadata(date, metadata, window):
+    window.clear()
+    window.addstr(1, 1, '%s %d, %d' % (date.strftime('%B'), date.day, date.year))
+    try:
+        m = '%d lines, %d words, %d bytes' % (metadata[date.day])
+    except KeyError:
+        m = 'No entry for selected date'
+    window.addstr(2, 1, m)
+    window.addstr(6, 1, '\n'.join(textwrap.wrap('Use arrow keys to navigate through dates, press Enter to '
+                    'edit or create entry for selected date.', 48)))
+    window.refresh()
+
 def main(stdscr):
     today = datetime.date.today()
-    cal = Calendar(today.year, today.month)
+    year, month = today.year, today.month
+    cal = Calendar(year, month)
     cal.draw(stdscr, 1, 1, entry_exists)
-    metadata = get_metadata_for_month(today.year, today.month)
+    metadata = get_metadata_for_month(year, month)
     nw = curses.newwin(10, 50, 0, 30)
-    def ph(cal):
-        date = cal.get_current_date()
-        nw.clear()
-        nw.addstr(1, 1, '%s %d, %d' % (date.strftime('%B'), date.day, date.year))
-        try:
-            m = '%d lines, %d words, %d bytes' % (metadata[date.day])
-        except KeyError:
-            m = 'No entry for selected date'
-        nw.addstr(2, 1, m)
-        nw.addstr(6, 1, '\n'.join(textwrap.wrap('Use arrow keys to navigate through dates, press Enter to '
-                        'edit or create entry for selected date.', 48)))
-        nw.refresh()
-    ph(cal)
+    show_metadata(cal.get_current_date(), metadata, nw)
     while 1:
         c = stdscr.getch()
         if c == ord('q'):
             break
         if c in (ord('h'), curses.KEY_LEFT):
-            cal.move_left()
-            ph(cal)
+            moved = cal.move_left()
+            if not moved:
+                year, month = (year if month != 1 else year - 1,
+                              month - 1 if month != 1 else 12)
+                cal = Calendar(year, month)
+                stdscr.clear()
+                cal.draw(stdscr, 1, 1, entry_exists, lastday(year, month))
+                metadata = get_metadata_for_month(year, month)
+            show_metadata(cal.get_current_date(), metadata, nw)
         elif c in (ord('l'), curses.KEY_RIGHT):
-            cal.move_right()
-            ph(cal)
+            moved = cal.move_right()
+            if not moved:
+                year, month = (year if month != 12 else year + 1,
+                              month + 1 if month != 12 else 1)
+                cal = Calendar(year, month)
+                stdscr.clear()
+                cal.draw(stdscr, 1, 1, entry_exists, 1)
+                metadata = get_metadata_for_month(year, month)
+            show_metadata(cal.get_current_date(), metadata, nw)
         elif c in (ord('j'), curses.KEY_DOWN):
             cal.move_down()
-            ph(cal)
+            show_metadata(cal.get_current_date(), metadata, nw)
         elif c in (ord('k'), curses.KEY_UP):
             cal.move_up()
-            ph(cal)
+            show_metadata(cal.get_current_date(), metadata, nw)
         elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
             date = cal.get_current_date()
             edit_date(date)
