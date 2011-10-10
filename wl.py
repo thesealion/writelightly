@@ -25,17 +25,21 @@ def entry_exists(date):
 
 def get_metadata(date):
     path = os.path.join(data_dir, str(date))
-    lines, words = 0, 0
+    lines, words, tags = 0, 0, []
     try:
         with open(path) as f:
             for line in f:
                 if not line.strip():
                     continue
+                if line.startswith('TAGS:'):
+                    tags += [b.strip() for b in line[5:].split(',')]
+                    continue
                 lines += 1
                 words += len(line.split())
     except IOError:
         return None
-    return (lines, words, os.path.getsize(path))
+    return {'lines': lines, 'words': words, 'size': os.path.getsize(path),
+            'tags': tags}
 
 
 def get_metadata_for_month(year, month):
@@ -48,10 +52,14 @@ def show_metadata(date, metadata, window):
     window.clear()
     window.addstr(1, 1, '%s %d, %d' % (date.strftime('%B'), date.day, date.year))
     try:
-        m = '%d lines, %d words, %d bytes' % (metadata[date.day])
+        m = '%(lines)d lines, %(words)d words, %(size)d bytes' % (metadata[date.day])
+        tags = ', '.join(metadata[date.day]['tags'])
     except TypeError:
         m = 'No entry for selected date'
+        tags = None
     window.addstr(2, 1, m)
+    if tags:
+        window.addstr(3, 1, 'Tags: %s' % tags)
     window.addstr(6, 1, '\n'.join(textwrap.wrap('Use arrow keys to navigate through dates, press Enter to '
                     'edit or create entry for selected date.', 48)))
     window.refresh()
