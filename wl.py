@@ -10,50 +10,25 @@ import sys
 import tempfile
 import textwrap
 from calendar import Calendar, lastday
+from metadata import Metadata
+import conf
 
 locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
 
-data_dir = '~/.wl'
-editor = 'gvim -f'
-
-data_dir = os.path.expanduser(data_dir)
+data_dir = os.path.expanduser(conf.data_dir)
 
 
 def entry_exists(date):
     path = os.path.join(data_dir, str(date))
     return os.path.exists(path)
 
-def get_metadata(date):
-    path = os.path.join(data_dir, str(date))
-    lines, words, tags = 0, 0, []
-    try:
-        with open(path) as f:
-            for line in f:
-                if not line.strip():
-                    continue
-                if line.startswith('TAGS:'):
-                    tags += [b.strip() for b in line[5:].split(',')]
-                    continue
-                lines += 1
-                words += len(line.split())
-    except IOError:
-        return None
-    return {'lines': lines, 'words': words, 'size': os.path.getsize(path),
-            'tags': tags}
-
-
-def get_metadata_for_month(year, month):
-    data = {}
-    for day in range(1, lastday(year, month) + 1):
-        data[day] = get_metadata(datetime.date(year, month, day))
-    return data
 
 def show_metadata(date, metadata, window):
     window.clear()
     window.addstr(1, 1, '%s %d, %d' % (date.strftime('%B'), date.day, date.year))
     try:
-        m = '%(lines)d lines, %(words)d words, %(size)d bytes' % (metadata[date.day])
-        tags = ', '.join(metadata[date.day]['tags'])
+        m = '%(lines)d lines, %(words)d words, %(size)s' % (metadata)
+        tags = ', '.join(metadata['tags'])
     except TypeError:
         m = 'No entry for selected date'
         tags = None
@@ -69,9 +44,10 @@ def main(stdscr):
     year, month = today.year, today.month
     cal = Calendar(year, month)
     cal.draw(stdscr, 1, 1, entry_exists)
-    metadata = get_metadata_for_month(year, month)
+    metadata = Metadata(year, month)
     nw = curses.newwin(10, 50, 0, 30)
-    show_metadata(cal.get_current_date(), metadata, nw)
+    d = cal.get_current_date()
+    show_metadata(d, metadata.get_data_for_day(d.day), nw)
     while 1:
         c = stdscr.getch()
         if c == ord('q'):
@@ -84,8 +60,9 @@ def main(stdscr):
                 cal = Calendar(year, month)
                 stdscr.clear()
                 cal.draw(stdscr, 1, 1, entry_exists, lastday(year, month))
-                metadata = get_metadata_for_month(year, month)
-            show_metadata(cal.get_current_date(), metadata, nw)
+                metadata = Metadata(year, month)
+            d = cal.get_current_date()
+            show_metadata(d, metadata.get_data_for_day(d.day), nw)
         elif c in (ord('l'), curses.KEY_RIGHT):
             moved = cal.move_right()
             if not moved:
@@ -94,20 +71,24 @@ def main(stdscr):
                 cal = Calendar(year, month)
                 stdscr.clear()
                 cal.draw(stdscr, 1, 1, entry_exists, 1)
-                metadata = get_metadata_for_month(year, month)
-            show_metadata(cal.get_current_date(), metadata, nw)
+                metadata = Metadata(year, month)
+            d = cal.get_current_date()
+            show_metadata(d, metadata.get_data_for_day(d.day), nw)
         elif c in (ord('j'), curses.KEY_DOWN):
             cal.move_down()
-            show_metadata(cal.get_current_date(), metadata, nw)
+            d = cal.get_current_date()
+            show_metadata(d, metadata.get_data_for_day(d.day), nw)
         elif c in (ord('k'), curses.KEY_UP):
             cal.move_up()
-            show_metadata(cal.get_current_date(), metadata, nw)
+            d = cal.get_current_date()
+            show_metadata(d, metadata.get_data_for_day(d.day), nw)
         elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
             date = cal.get_current_date()
             edit_date(date)
             cal.set_entry_exists_for_current_day(entry_exists(date))
-            metadata[date.day] = get_metadata(date)
-            show_metadata(date, metadata, nw)
+            metadata.load_day(date.day)
+            metadata.write()
+            show_metadata(date, metadata.get_data_for_day(date.day), nw)
 
 def parse_date(date):
     if date == 'today':
@@ -150,7 +131,7 @@ def edit_date(date):
     with open(tmpfn, 'w') as f:
         f.write(header)
         f.write(content)
-    exit_code = subprocess.call('%s %s' % (editor, tmpfn), shell=True)
+    exit_code = subprocess.call('%s %s' % (conf.editor, tmpfn), shell=True)
 
     with open(tmpfn) as f:
         new_content = f.read()
@@ -174,6 +155,7 @@ if __name__ == '__main__':
             print 'Usage: %s [<date>]' % sys.argv[0]
             sys.exit()
         edit_date(date)
+        Metadata(date.year, date.month).write()
     else:
         stdscr = curses.initscr()
         curses.noecho()
