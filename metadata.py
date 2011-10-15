@@ -19,7 +19,9 @@ def format_size(size):
 class Metadata(object):
     def __init__(self, year, month):
         self.year, self.month = year, month
+        self._dirty = False
         self.data = {}
+        self.tags = {}
         self._load()
 
     def get_path(self):
@@ -28,7 +30,8 @@ class Metadata(object):
     def _load(self):
         try:
             with open(self.get_path()) as f:
-                self.data = yaml.load(f)
+                loaded = yaml.load(f)
+                self.data, self.tags = loaded['data'], loaded['tags']
         except IOError:
             for day in range(1, lastday(self.year, self.month) + 1):
                 self.load_day(day)
@@ -57,11 +60,24 @@ class Metadata(object):
         else:
             self.data[day] = {'lines': lines, 'words': words, 'tags': tags,
                               'size': format_size(os.path.getsize(path))}
+            self._dirty = True
+
+    def _load_tags(self):
+        self.tags = {}
+        for day, data in self.data.items():
+            for tag in data['tags']:
+                try:
+                    self.tags[tag].append(day)
+                except KeyError:
+                    self.tags[tag] = [day]
 
     def write(self):
         try:
             os.mkdir(metadata_dir)
         except OSError:
             pass
-        with open(self.get_path(), 'w') as f:
-            yaml.dump(self.data, f)
+        if self._dirty:
+            self._load_tags()
+            with open(self.get_path(), 'w') as f:
+                yaml.dump({'data': self.data, 'tags': self.tags}, f)
+            self._dirty = False
