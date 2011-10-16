@@ -56,6 +56,14 @@ def main(screen):
             sl.move_to_top()
         elif c in (ord('G'), curses.KEY_END):
             sl.move_to_bottom()
+        elif curses.keyname(c) in ('^F', 'KEY_NPAGE'):
+            sl.scroll_screen_down()
+        elif curses.keyname(c) in ('^B', 'KEY_PPAGE'):
+            sl.scroll_screen_up()
+        elif curses.keyname(c) == '^D':
+            sl.scroll_halfscreen_down()
+        elif curses.keyname(c) == '^U':
+            sl.scroll_halfscreen_up()
 
 if __name__ == '__main__':
     stdscr = curses.initscr()

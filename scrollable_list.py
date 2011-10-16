@@ -45,21 +45,38 @@ class ScrollableList(object):
             self.current -= 1
             self.draw()
 
-    def scroll_down(self):
+    def scroll_down(self, lines=1):
         if self.bottom < self.last:
-            if self.current == self.top:
-                self.current += 1
-            self.top += 1
-            self.bottom += 1
+            dif = self.last - self.bottom
+            if lines > dif:
+                lines = dif
+            self.top += lines
+            self.bottom += lines
+            if self.current < self.top:
+                self.current = self.top
             self.draw()
 
-    def scroll_up(self):
+    def scroll_up(self, lines=1):
         if self.top > 0:
-            if self.current == self.bottom:
-                self.current -= 1
-            self.top -= 1
-            self.bottom -= 1
+            if lines > self.top:
+                lines = self.top
+            self.top -= lines
+            self.bottom -= lines
+            if self.current > self.bottom:
+                self.current = self.bottom
             self.draw()
+
+    def scroll_screen_down(self):
+        self.scroll_down(self.ysize)
+
+    def scroll_halfscreen_down(self):
+        self.scroll_down(self.ysize // 2)
+
+    def scroll_screen_up(self):
+        self.scroll_up(self.ysize)
+
+    def scroll_halfscreen_up(self):
+        self.scroll_up(self.ysize // 2)
 
     def move_to_top(self):
         self.top = 0
