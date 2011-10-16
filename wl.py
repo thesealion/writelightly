@@ -165,7 +165,10 @@ if __name__ == '__main__':
         curses.noecho()
         curses.cbreak()
         stdscr.keypad(1)
-        curses.curs_set(0)
+        try:
+            curses.curs_set(0)
+        except curses.error:
+            pass
 
         try:
             main(stdscr)
