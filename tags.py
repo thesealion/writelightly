@@ -48,15 +48,16 @@ def main(screen):
         if c == ord('q'):
             break
         elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
-            show_date_list(items[sl.get_current_index()][1], screen)
+            tag, dates = items[sl.get_current_index()]
+            show_date_list(tag, dates, screen)
             sl.draw()
         else:
             handle_keypress(c, sl)
 
-def show_date_list(dates, window):
+def show_date_list(tag, dates, window):
     labels = ['%s %d, %d' % (date.strftime('%B'),
                              date.day, date.year) for date in dates]
-    sl = ScrollableList(labels, window)
+    sl = ScrollableList(labels, window, tag)
     sl.draw()
     while 1:
         c = stdscr.getch()

@@ -1,26 +1,30 @@
 import curses
 
 class ScrollableList(object):
-    def __init__(self, lines, window):
+    def __init__(self, lines, window, heading=None):
         self.lines = lines
         self.last = len(self.lines) - 1
         self.window = window
-        self.ysize = self.window.getmaxyx()[0]
+        self.heading = heading
+        self.offset = len(heading.split('\n')) if heading else 0
+        self.ysize = self.window.getmaxyx()[0] - self.offset
         self.top = 0
         self.bottom = len(self.lines[:self.ysize]) - 1
         self.current = self.top
 
     def draw(self):
         self.window.clear()
+        if self.heading:
+            for index, line in enumerate(self.heading.split('\n')):
+                self.window.addstr(index, 0, line, curses.A_BOLD)
         for index, item in enumerate(self.lines[self.top:self.bottom+1]):
-            self.window.addstr(index, 0, item)
-        self.window.addstr(self.current-self.top, 0, self.lines[self.current],
-                           curses.A_REVERSE)
+            self.window.addstr(index + self.offset, 0, item)
+        self._change()
         self.window.refresh()
 
     def _change(self, highlight=True):
         attr = curses.A_REVERSE if highlight else 0
-        self.window.addstr(self.current - self.top, 0,
+        self.window.addstr(self.current - self.top + self.offset, 0,
                            self.lines[self.current], attr)
 
     def move_down(self):
