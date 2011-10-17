@@ -22,32 +22,15 @@ def entry_exists(date):
     path = os.path.join(data_dir, str(date))
     return os.path.exists(path)
 
-
-def show_metadata(date, metadata, window):
-    window.clear()
-    window.addstr(1, 1, '%s %d, %d' % (date.strftime('%B'), date.day, date.year))
-    try:
-        m = '%(lines)d lines, %(words)d words, %(size)s' % (metadata)
-        tags = ', '.join(metadata['tags'])
-    except TypeError:
-        m = 'No entry for selected date'
-        tags = None
-    window.addstr(2, 1, m)
-    if tags:
-        window.addstr(3, 1, 'Tags: %s' % tags)
-    window.addstr(6, 1, '\n'.join(textwrap.wrap('Use arrow keys to navigate through dates, press Enter to '
-                    'edit or create entry for selected date.', 48)))
-    window.refresh()
-
 def main(stdscr):
     today = datetime.date.today()
     year, month = today.year, today.month
     cal = Calendar(year, month)
     cal.draw(stdscr, 1, 1, entry_exists)
-    metadata = Metadata(year, month)
-    nw = curses.newwin(10, 50, 0, 30)
+    metadata = Metadata.get(year, month)
+    nw = curses.newwin(10, 50, 1, 31)
     d = cal.get_current_date()
-    show_metadata(d, metadata.get_data_for_day(d.day), nw)
+    metadata.show(d.day, nw)
     while 1:
         c = stdscr.getch()
         if c == ord('q'):
@@ -61,9 +44,9 @@ def main(stdscr):
                 stdscr.clear()
                 cal.draw(stdscr, 1, 1, entry_exists, lastday(year, month))
                 metadata.write()
-                metadata = Metadata(year, month)
+                metadata = Metadata.get(year, month)
             d = cal.get_current_date()
-            show_metadata(d, metadata.get_data_for_day(d.day), nw)
+            metadata.show(d.day, nw)
         elif c in (ord('l'), curses.KEY_RIGHT):
             moved = cal.move_right()
             if not moved:
@@ -73,23 +56,23 @@ def main(stdscr):
                 stdscr.clear()
                 cal.draw(stdscr, 1, 1, entry_exists, 1)
                 metadata.write()
-                metadata = Metadata(year, month)
+                metadata = Metadata.get(year, month)
             d = cal.get_current_date()
-            show_metadata(d, metadata.get_data_for_day(d.day), nw)
+            metadata.show(d.day, nw)
         elif c in (ord('j'), curses.KEY_DOWN):
             cal.move_down()
             d = cal.get_current_date()
-            show_metadata(d, metadata.get_data_for_day(d.day), nw)
+            metadata.show(d.day, nw)
         elif c in (ord('k'), curses.KEY_UP):
             cal.move_up()
             d = cal.get_current_date()
-            show_metadata(d, metadata.get_data_for_day(d.day), nw)
+            metadata.show(d.day, nw)
         elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
             date = cal.get_current_date()
             edit_date(date)
             cal.set_entry_exists_for_current_day(entry_exists(date))
             metadata.load_day(date.day)
-            show_metadata(date, metadata.get_data_for_day(date.day), nw)
+            metadata.show(d.day, nw)
     metadata.write()
 
 def parse_date(date):

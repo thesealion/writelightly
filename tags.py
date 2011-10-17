@@ -2,7 +2,7 @@ import curses
 import datetime
 import os
 import conf
-from metadata import Metadata
+from metadata import Metadata, format_date
 from scrollable_list import ScrollableList, handle_keypress
 from wl import edit_date
 
@@ -55,10 +55,13 @@ def main(screen):
             handle_keypress(c, sl)
 
 def show_date_list(tag, dates, window):
-    labels = ['%s %d, %d' % (date.strftime('%B'),
-                             date.day, date.year) for date in dates]
+    labels = map(format_date, dates)
     sl = ScrollableList(labels, window, tag)
     sl.draw()
+    nw = curses.newwin(10, 50, 0, 30)
+    date = dates[sl.get_current_index()]
+    m = Metadata.get(date.year, date.month)
+    m.show(date.day, nw)
     while 1:
         c = stdscr.getch()
         if curses.keyname(c) == '^O' or c == ord('q'):
@@ -68,6 +71,9 @@ def show_date_list(tag, dates, window):
             sl.draw()
         else:
             handle_keypress(c, sl)
+            date = dates[sl.get_current_index()]
+            m = Metadata.get(date.year, date.month)
+            m.show(date.day, nw)
 
 if __name__ == '__main__':
     stdscr = curses.initscr()

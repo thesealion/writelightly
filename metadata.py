@@ -15,14 +15,26 @@ def format_size(size):
         return ('%.2f' % kib).rstrip('0').rstrip('.') + ' KiB'
     return '%d B' % size
 
+def format_date(date):
+    return '%s %d, %d' % (date.strftime('%B'), date.day, date.year)
 
 class Metadata(object):
+    instances = {}
     def __init__(self, year, month):
         self.year, self.month = year, month
         self._dirty = False
         self.data = {}
         self.tags = {}
         self._load()
+
+    @classmethod
+    def get(cls, year, month):
+        k = (year, month)
+        if k in cls.instances:
+            return cls.instances[k]
+        m = cls(year, month)
+        cls.instances[k] = m
+        return m
 
     def get_path(self):
         return os.path.join(metadata_dir, '%d-%d' % (self.year, self.month))
@@ -81,3 +93,18 @@ class Metadata(object):
             with open(self.get_path(), 'w') as f:
                 yaml.dump({'data': self.data, 'tags': self.tags}, f)
             self._dirty = False
+
+    def show(self, day, window):
+        data = self.get_data_for_day(day)
+        window.clear()
+        window.addstr(0, 0, format_date(datetime.date(self.year, self.month, day)))
+        try:
+            m = '%(lines)d lines, %(words)d words, %(size)s' % (data)
+            tags = ', '.join(data['tags'])
+        except TypeError:
+            m = 'No entry for selected date'
+            tags = None
+        window.addstr(1, 0, m)
+        if tags:
+            window.addstr(2, 0, 'Tags: %s' % tags)
+        window.refresh()
