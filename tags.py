@@ -42,6 +42,14 @@ def main(screen):
     tl = ['%s (%d)' % (item[0], len(item[1])) for item in items]
     sl = ScrollableList(tl, screen)
     sl.draw()
+    nw = curses.newwin(10, 50, 1, 30)
+    def tag_info(index):
+        tag, dates = items[index]
+        d = dates[-1]
+        screen.addstr(0, 30, 'Last entry:', curses.A_BOLD)
+        screen.refresh()
+        Metadata.get(d.year, d.month).show(d.day, nw)
+    tag_info(sl.get_current_index())
     while 1:
         c = stdscr.getch()
         if c == ord('q'):
@@ -50,8 +58,10 @@ def main(screen):
             tag, dates = items[sl.get_current_index()]
             show_date_list(tag, dates, screen)
             sl.draw()
+            tag_info(sl.get_current_index())
         else:
             handle_keypress(c, sl)
+            tag_info(sl.get_current_index())
     Metadata.write_all()
 
 def show_date_list(tag, dates, window):
