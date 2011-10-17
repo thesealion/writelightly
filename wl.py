@@ -12,6 +12,7 @@ import textwrap
 from calendar import Calendar, lastday
 from metadata import Metadata
 import conf
+from utils import init_screen, deinit_screen
 
 locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
 
@@ -142,22 +143,12 @@ if __name__ == '__main__':
         metadata.load_day(date.day)
         metadata.write()
     else:
-        stdscr = curses.initscr()
-        curses.noecho()
-        curses.cbreak()
-        stdscr.keypad(1)
-        try:
-            curses.curs_set(0)
-        except curses.error:
-            pass
+        screen = init_screen()
 
         try:
-            main(stdscr)
+            main(screen)
         finally:
-            stdscr.keypad(0)
-            curses.nocbreak()
-            curses.echo()
-            curses.endwin()
+            deinit_screen(screen)
 
 
 

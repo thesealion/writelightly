@@ -1,20 +1,18 @@
 import curses
 import datetime
 import os
+import sys
 import conf
 from metadata import Metadata, format_date
 from scrollable_list import ScrollableList, handle_keypress
 from wl import edit_date
+from utils import init_screen, deinit_screen
 
 
 data_dir = os.path.expanduser(conf.data_dir)
 
-def main(screen):
+def get_all_months():
     entries = os.listdir(data_dir)
-
-    screen.addstr(0, 0, 'loading...')
-    screen.refresh()
-
     try:
         entries.remove('metadata')
     except ValueError:
@@ -24,10 +22,15 @@ def main(screen):
     for entry in entries:
         months.add(tuple(map(int, entry.split('-')[:2])))
 
-    d = sorted(sorted(list(months), key=lambda i: i[1]), key=lambda i: i[0])
+    return sorted(sorted(list(months), key=lambda i: i[1]), key=lambda i: i[0])
+
+def main(screen):
+    screen.addstr(0, 0, 'loading...')
+    screen.refresh()
+
     tags = {}
 
-    for year, month in d:
+    for year, month in get_all_months():
         m = Metadata.get(year, month)
         for tag, days in m.tags.items():
             for day in days:
@@ -51,7 +54,7 @@ def main(screen):
         Metadata.get(d.year, d.month).show(d.day, nw)
     tag_info(sl.get_current_index())
     while 1:
-        c = stdscr.getch()
+        c = screen.getch()
         if c == ord('q'):
             break
         elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
@@ -73,7 +76,7 @@ def show_date_list(tag, dates, window):
     metadata = Metadata.get(date.year, date.month)
     metadata.show(date.day, nw)
     while 1:
-        c = stdscr.getch()
+        c = window.getch()
         if curses.keyname(c) == '^O' or c == ord('q'):
             break
         elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
@@ -89,22 +92,29 @@ def show_date_list(tag, dates, window):
             metadata.show(date.day, nw)
 
 if __name__ == '__main__':
-    stdscr = curses.initscr()
-    curses.noecho()
-    curses.cbreak()
-    stdscr.keypad(1)
-    try:
-        curses.curs_set(0)
-    except curses.error:
-        pass
-
-    try:
-        main(stdscr)
-    finally:
-        stdscr.keypad(0)
-        curses.nocbreak()
-        curses.echo()
-        curses.endwin()
+    args = sys.argv[1:]
+    if args:
+        tag = args[0]
+        dates = []
+        for year, month in get_all_months():
+            m = Metadata.get(year, month)
+            if tag in m.tags:
+                for day in m.tags[tag]:
+                    dates.append(datetime.date(year, month, day))
+        if not dates:
+            print 'No entries for tag %s' % tag
+        else:
+            screen = init_screen()
+            try:
+                show_date_list(tag, dates, screen)
+            finally:
+                deinit_screen(screen)
+    else:
+        screen = init_screen()
+        try:
+            main(screen)
+        finally:
+            deinit_screen(screen)
 
 
 
