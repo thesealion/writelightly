@@ -28,8 +28,7 @@ def main(screen):
     tags = {}
 
     for year, month in d:
-        m = Metadata(year, month)
-        m.write()
+        m = Metadata.get(year, month)
         for tag, days in m.tags.items():
             for day in days:
                 date = datetime.date(year, month, day)
@@ -53,6 +52,7 @@ def main(screen):
             sl.draw()
         else:
             handle_keypress(c, sl)
+    Metadata.write_all()
 
 def show_date_list(tag, dates, window):
     labels = map(format_date, dates)
@@ -60,20 +60,23 @@ def show_date_list(tag, dates, window):
     sl.draw()
     nw = curses.newwin(10, 50, 0, 30)
     date = dates[sl.get_current_index()]
-    m = Metadata.get(date.year, date.month)
-    m.show(date.day, nw)
+    metadata = Metadata.get(date.year, date.month)
+    metadata.show(date.day, nw)
     while 1:
         c = stdscr.getch()
         if curses.keyname(c) == '^O' or c == ord('q'):
             break
         elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
-            edit_date(dates[sl.get_current_index()])
+            date = dates[sl.get_current_index()]
+            edit_date(date)
             sl.draw()
+            metadata.load_day(date.day)
+            metadata.show(date.day, nw)
         else:
             handle_keypress(c, sl)
             date = dates[sl.get_current_index()]
-            m = Metadata.get(date.year, date.month)
-            m.show(date.day, nw)
+            metadata = Metadata.get(date.year, date.month)
+            metadata.show(date.day, nw)
 
 if __name__ == '__main__':
     stdscr = curses.initscr()

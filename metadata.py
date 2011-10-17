@@ -36,6 +36,11 @@ class Metadata(object):
         cls.instances[k] = m
         return m
 
+    @classmethod
+    def write_all(cls):
+        for obj in cls.instances.values():
+            obj.write()
+
     def get_path(self):
         return os.path.join(metadata_dir, '%d-%d' % (self.year, self.month))
 
@@ -47,6 +52,7 @@ class Metadata(object):
         except IOError:
             for day in range(1, lastday(self.year, self.month) + 1):
                 self.load_day(day)
+            self._load_tags()
 
     def get_data_for_day(self, day):
         try:

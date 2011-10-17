@@ -43,7 +43,6 @@ def main(stdscr):
                 cal = Calendar(year, month)
                 stdscr.clear()
                 cal.draw(stdscr, 1, 1, entry_exists, lastday(year, month))
-                metadata.write()
                 metadata = Metadata.get(year, month)
             d = cal.get_current_date()
             metadata.show(d.day, nw)
@@ -55,7 +54,6 @@ def main(stdscr):
                 cal = Calendar(year, month)
                 stdscr.clear()
                 cal.draw(stdscr, 1, 1, entry_exists, 1)
-                metadata.write()
                 metadata = Metadata.get(year, month)
             d = cal.get_current_date()
             metadata.show(d.day, nw)
@@ -72,8 +70,8 @@ def main(stdscr):
             edit_date(date)
             cal.set_entry_exists_for_current_day(entry_exists(date))
             metadata.load_day(date.day)
-            metadata.show(d.day, nw)
-    metadata.write()
+            metadata.show(date.day, nw)
+    Metadata.write_all()
 
 def parse_date(date):
     if date == 'today':
