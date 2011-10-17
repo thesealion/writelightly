@@ -92,5 +92,28 @@ class ScrollableList(object):
         self.current = self.bottom
         self.draw()
 
+    def get_current_index(self):
+        return self.current
 
+def handle_keypress(char, sl):
+    if char in (ord('j'), curses.KEY_DOWN):
+        sl.move_down()
+    elif char in (ord('k'), curses.KEY_UP):
+        sl.move_up()
+    elif curses.keyname(char) == '^E':
+        sl.scroll_down()
+    elif curses.keyname(char) == '^Y':
+        sl.scroll_up()
+    elif char in (ord('g'), curses.KEY_HOME):
+        sl.move_to_top()
+    elif char in (ord('G'), curses.KEY_END):
+        sl.move_to_bottom()
+    elif curses.keyname(char) in ('^F', 'KEY_NPAGE'):
+        sl.scroll_screen_down()
+    elif curses.keyname(char) in ('^B', 'KEY_PPAGE'):
+        sl.scroll_screen_up()
+    elif curses.keyname(char) == '^D':
+        sl.scroll_halfscreen_down()
+    elif curses.keyname(char) == '^U':
+        sl.scroll_halfscreen_up()
 

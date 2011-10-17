@@ -3,7 +3,8 @@ import datetime
 import os
 import conf
 from metadata import Metadata
-from scrollable_list import ScrollableList
+from scrollable_list import ScrollableList, handle_keypress
+from wl import edit_date
 
 
 data_dir = os.path.expanduser(conf.data_dir)
@@ -30,40 +31,42 @@ def main(screen):
         m = Metadata(year, month)
         m.write()
         for tag, days in m.tags.items():
-            try:
-                tags[tag] += len(days)
-            except KeyError:
-                tags[tag] = len(days)
+            for day in days:
+                date = datetime.date(year, month, day)
+                try:
+                    tags[tag].append(date)
+                except KeyError:
+                    tags[tag] = [date]
 
     items = sorted(sorted(tags.items(), key=lambda i: i[0]),
-                   key=lambda i: i[1], reverse=True)
-    tl = ['%s (%d)' % item for item in items]
+                   key=lambda i: len(i[1]), reverse=True)
+    tl = ['%s (%d)' % (item[0], len(item[1])) for item in items]
     sl = ScrollableList(tl, screen)
     sl.draw()
     while 1:
         c = stdscr.getch()
         if c == ord('q'):
             break
-        if c in (ord('j'), curses.KEY_DOWN):
-            sl.move_down()
-        elif c in (ord('k'), curses.KEY_UP):
-            sl.move_up()
-        elif curses.keyname(c) == '^E':
-            sl.scroll_down()
-        elif curses.keyname(c) == '^Y':
-            sl.scroll_up()
-        elif c in (ord('g'), curses.KEY_HOME):
-            sl.move_to_top()
-        elif c in (ord('G'), curses.KEY_END):
-            sl.move_to_bottom()
-        elif curses.keyname(c) in ('^F', 'KEY_NPAGE'):
-            sl.scroll_screen_down()
-        elif curses.keyname(c) in ('^B', 'KEY_PPAGE'):
-            sl.scroll_screen_up()
-        elif curses.keyname(c) == '^D':
-            sl.scroll_halfscreen_down()
-        elif curses.keyname(c) == '^U':
-            sl.scroll_halfscreen_up()
+        elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
+            show_date_list(items[sl.get_current_index()][1], screen)
+            sl.draw()
+        else:
+            handle_keypress(c, sl)
+
+def show_date_list(dates, window):
+    labels = ['%s %d, %d' % (date.strftime('%B'),
+                             date.day, date.year) for date in dates]
+    sl = ScrollableList(labels, window)
+    sl.draw()
+    while 1:
+        c = stdscr.getch()
+        if curses.keyname(c) == '^O' or c == ord('q'):
+            break
+        elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
+            edit_date(dates[sl.get_current_index()])
+            sl.draw()
+        else:
+            handle_keypress(c, sl)
 
 if __name__ == '__main__':
     stdscr = curses.initscr()
