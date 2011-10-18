@@ -26,8 +26,8 @@ def entry_exists(date):
 def main(stdscr):
     today = datetime.date.today()
     year, month = today.year, today.month
-    cal = Calendar(year, month)
-    cal.draw(stdscr, 1, 1, entry_exists)
+    cal = Calendar(year, month, stdscr, 1, entry_exists)
+    cal.draw()
     metadata = Metadata.get(year, month)
     nw = curses.newwin(10, 50, 1, 31)
     d = cal.get_current_date()
@@ -41,9 +41,9 @@ def main(stdscr):
             if not moved:
                 year, month = (year if month != 1 else year - 1,
                               month - 1 if month != 1 else 12)
-                cal = Calendar(year, month)
-                stdscr.clear()
-                cal.draw(stdscr, 1, 1, entry_exists, lastday(year, month))
+                cal = Calendar(year, month, stdscr, lastday(year, month),
+                               entry_exists)
+                cal.draw()
                 metadata = Metadata.get(year, month)
             d = cal.get_current_date()
             metadata.show(d.day, nw)
@@ -52,9 +52,8 @@ def main(stdscr):
             if not moved:
                 year, month = (year if month != 12 else year + 1,
                               month + 1 if month != 12 else 1)
-                cal = Calendar(year, month)
-                stdscr.clear()
-                cal.draw(stdscr, 1, 1, entry_exists, 1)
+                cal = Calendar(year, month, stdscr, 1, entry_exists)
+                cal.draw()
                 metadata = Metadata.get(year, month)
             d = cal.get_current_date()
             metadata.show(d.day, nw)
@@ -72,6 +71,10 @@ def main(stdscr):
             cal.set_entry_exists_for_current_day(entry_exists(date))
             metadata.load_day(date.day)
             metadata.show(date.day, nw)
+        elif c in (ord('t'),):
+            import tags
+            tags.main(stdscr)
+            cal.draw()
     Metadata.write_all()
 
 def parse_date(date):

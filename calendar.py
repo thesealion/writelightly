@@ -15,18 +15,20 @@ def lastday(*args):
     return (next_first - datetime.timedelta(days=1)).day
 
 class Calendar(object):
-    def __init__(self, year, month):
+    def __init__(self, year, month, window, init_day=None,
+                 is_bold=lambda date: False):
         self.year, self.month = year, month
         self.data = []
         self.selected = ()
-        self.window = None
-
-    def draw(self, window, x0, y0, entry_exists=lambda date: False, init_day=None):
+        self.window = window
         if not init_day:
             init_day = datetime.date.today().day
-        self.window = window
+        self.init_day = init_day
+        self.is_bold = is_bold
+
+    def draw(self):
         first = datetime.date(self.year, self.month, 1)
-        x, y = x0, y0 + 1
+        x, y = 0, 1
         week = [None] * first.weekday()
         x += 3 * first.weekday()
         last = lastday(first)
@@ -34,35 +36,37 @@ class Calendar(object):
         data = []
         while day <= last:
             date = datetime.date(self.year, self.month, day)
-            week.append((x, y, entry_exists(date), day))
+            week.append((x, y, self.is_bold(date), day))
             if len(week) == 7:
                 data.append(week)
                 week = []
                 y += 1
-                x = x0
+                x = 0
             else:
                 x += 3
             day += 1
         if week:
             data.append(week + [None] * (7 - len(week)))
         self.data = data
-        window.addstr(y0, x0, 'Mo Tu We Th Fr Sa Su')
+        self.window.clear()
+        self.window.addstr(0, 0, 'Mo Tu We Th Fr Sa Su')
+        init_day = self.get_current_day() or self.init_day
         for w_ind, week in enumerate(data):
             for d_ind, day in enumerate(week):
                 if day is None:
                     continue
-                x, y, ee, d = day
-                attr = curses.A_BOLD if ee else 0
-                window.addstr(y, x, '%2d' % d, attr)
+                x, y, bold, d = day
+                attr = curses.A_BOLD if bold else 0
+                self.window.addstr(y, x, '%2d' % d, attr)
                 if d == init_day:
                     self.selected = (d_ind, w_ind)
-        self._change(True) #initial highlighting of today's date
+        self._change(True)
 
     def _change(self, highlight):
         """Highlight or dehighlight the current selected date."""
         d_ind, w_ind = self.selected
-        x, y, ee, d = self.data[w_ind][d_ind]
-        attr = curses.A_BOLD if ee else 0
+        x, y, bold, d = self.data[w_ind][d_ind]
+        attr = curses.A_BOLD if bold else 0
         if highlight:
             attr += curses.A_REVERSE
         self.window.addstr(y, x, '%2d' % d, attr)
@@ -117,10 +121,16 @@ class Calendar(object):
             w_ind = 0 if self.data[0][d_ind] is not None else 1
         return self._move(d_ind, w_ind)
 
-    def get_current_date(self):
+    def get_current_day(self):
+        if not self.selected:
+            return None
         d_ind, w_ind = self.selected
-        x, y, ee, d = self.data[w_ind][d_ind]
-        return datetime.date(self.year, self.month, d)
+        x, y, bold, d = self.data[w_ind][d_ind]
+        return d
+
+    def get_current_date(self):
+        day = self.get_current_day()
+        return datetime.date(self.year, self.month, day) if day else None
 
     def set_entry_exists_for_current_day(self, ee):
         d_ind, w_ind = self.selected
