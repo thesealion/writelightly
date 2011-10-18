@@ -1,22 +1,11 @@
 import datetime
 import yaml
 import os
-
-from calendar import lastday
-
+from utils import lastday, format_size, format_date
 import conf
 
 data_dir = os.path.expanduser(conf.data_dir)
 metadata_dir = os.path.join(data_dir, 'metadata')
-
-def format_size(size):
-    if size > 1024:
-        kib = size // 1024 + (size % 1024) / 1024.0
-        return ('%.2f' % kib).rstrip('0').rstrip('.') + ' KiB'
-    return '%d B' % size
-
-def format_date(date):
-    return '%s %d, %d' % (date.strftime('%B'), date.day, date.year)
 
 class Metadata(object):
     instances = {}

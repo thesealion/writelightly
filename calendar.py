@@ -1,18 +1,6 @@
 import datetime
 import curses
-
-def lastday(*args):
-    if not args:
-        raise TypeError('I need some arguments')
-    if len(args) == 1 and type(args[0]) is datetime.date:
-        year, month = args[0].year, args[0].month
-    elif len(args) == 2 and type(args[0]) is int and type(args[1]) is int:
-        year, month = args
-    else:
-        raise TypeError('Give me either datetime.date or year and month')
-    next_first = datetime.date(year if month != 12 else year + 1,
-                               month + 1 if month != 12 else 1, 1)
-    return (next_first - datetime.timedelta(days=1)).day
+from utils import lastday
 
 class Calendar(object):
     def __init__(self, year, month, window, init_day=None,

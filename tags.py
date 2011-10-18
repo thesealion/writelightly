@@ -6,23 +6,9 @@ import conf
 from metadata import Metadata, format_date
 from scrollable_list import ScrollableList, handle_keypress
 from wl import edit_date
-from utils import init_screen, deinit_screen
-
+from utils import init_screen, deinit_screen, get_all_months
 
 data_dir = os.path.expanduser(conf.data_dir)
-
-def get_all_months():
-    entries = os.listdir(data_dir)
-    try:
-        entries.remove('metadata')
-    except ValueError:
-        pass
-
-    months = set()
-    for entry in entries:
-        months.add(tuple(map(int, entry.split('-')[:2])))
-
-    return sorted(sorted(list(months), key=lambda i: i[1]), key=lambda i: i[0])
 
 def main(screen):
     screen.addstr(0, 0, 'loading...')
@@ -30,7 +16,7 @@ def main(screen):
 
     tags = {}
 
-    for year, month in get_all_months():
+    for year, month in get_all_months(data_dir):
         m = Metadata.get(year, month)
         for tag, days in m.tags.items():
             for day in days:
@@ -96,7 +82,7 @@ if __name__ == '__main__':
     if args:
         tag = args[0]
         dates = []
-        for year, month in get_all_months():
+        for year, month in get_all_months(data_dir):
             m = Metadata.get(year, month)
             if tag in m.tags:
                 for day in m.tags[tag]:

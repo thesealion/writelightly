@@ -4,7 +4,6 @@ import curses
 import datetime
 import locale
 import os
-import re
 import subprocess
 import sys
 import tempfile
@@ -12,16 +11,11 @@ import textwrap
 from calendar import Calendar, lastday
 from metadata import Metadata
 import conf
-from utils import init_screen, deinit_screen
+from utils import init_screen, deinit_screen, entry_exists, parse_date
 
 locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
 
 data_dir = os.path.expanduser(conf.data_dir)
-
-
-def entry_exists(date):
-    path = os.path.join(data_dir, str(date))
-    return os.path.exists(path)
 
 def main(stdscr):
     today = datetime.date.today()
@@ -76,20 +70,6 @@ def main(stdscr):
             tags.main(stdscr)
             cal.draw()
     Metadata.write_all()
-
-def parse_date(date):
-    if date == 'today':
-        return datetime.date.today()
-    if date == 'yesterday':
-        return datetime.date.today() - datetime.timedelta(days=1)
-    for p in ['(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})',
-              '(?P<month>\d{2})/(?P<day>\d{2})/(?P<year>\d{4})',
-              '(?P<day>\d{2}).(?P<month>\d{2}).(?P<year>\d{4})']:
-        m = re.match(p, date)
-        if m:
-            d = m.groupdict()
-            return datetime.date(int(d['year']), int(d['month']), int(d['day']))
-    return None
 
 def edit_date(date):
     filename = str(date)
