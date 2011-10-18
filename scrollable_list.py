@@ -99,6 +99,26 @@ class ScrollableList(object):
     def get_current_index(self):
         return self.current
 
+    def resize(self):
+        new_ysize = self.window.getmaxyx()[0] - self.offset
+        dif = new_ysize - self.ysize
+        self.ysize = new_ysize
+        if dif > 0: #window increased
+            bottom_lines = self.last - self.bottom
+            down = dif if bottom_lines >= dif else bottom_lines
+            self.bottom += down
+            if down < dif:
+                top_lines = self.top
+                up = dif - down if top_lines >= dif - down else top_lines
+                self.top -= up
+        elif dif < 0: #window decreased
+            self.bottom -= abs(dif)
+            if self.current > self.bottom:
+                self.current = self.bottom
+        else: #nothing changed
+            return
+        self.draw()
+
 def handle_keypress(char, sl):
     if char in (ord('j'), curses.KEY_DOWN):
         sl.move_down()
@@ -120,4 +140,6 @@ def handle_keypress(char, sl):
         sl.scroll_halfscreen_down()
     elif curses.keyname(char) == '^U':
         sl.scroll_halfscreen_up()
+    elif char == curses.KEY_RESIZE:
+        sl.resize()
 
