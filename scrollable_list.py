@@ -2,6 +2,35 @@ import curses
 from textinput import TextInput
 import curses.ascii
 
+def get_char(win):
+    def get_check_next_byte():
+        c = win.getch()
+        if 128 <= c <= 191:
+            return c
+        else:
+            raise UnicodeError
+
+    bytes = []
+    c = win.getch()
+    if c <= 127:
+        return c
+    elif 194 <= c <= 223:
+        bytes.append(c)
+        bytes.append(get_check_next_byte())
+    elif 224 <= c <= 239:
+        bytes.append(c)
+        bytes.append(get_check_next_byte())
+        bytes.append(get_check_next_byte())
+    elif 240 <= c <= 244:
+        bytes.append(c)
+        bytes.append(get_check_next_byte())
+        bytes.append(get_check_next_byte())
+        bytes.append(get_check_next_byte())
+    else:
+        return c
+    buf = ''.join([chr(b) for b in bytes])
+    return buf
+
 class ScrollableList(object):
     def __init__(self, lines, window, heading=None):
         self.lines = lines
@@ -147,6 +176,10 @@ class ScrollableList(object):
             stop = self.last
         elif stop > self.last:
             stop = 0
+        if start < 0:
+            start = self.last
+        elif start > self.last:
+            start = 0
         while 1:
             try:
                 yield start, self.lines[start]
@@ -196,7 +229,7 @@ def handle_keypress(char, sl):
         else:
             params = (b, a, True)
         for index, line in sl.get_lines(*params):
-            if line.startswith(sl.term):
+            if line.lower().startswith(sl.term):
                 sl.goto(index)
                 break
     elif char == ord('/'):
@@ -220,15 +253,15 @@ def handle_search(sl):
     curses.curs_set(1)
     while 1:
         try:
-            ch = tw.getch()
+            ch = get_char(tw)
         except KeyboardInterrupt:
             sl.goto(initial)
             quit()
             break
-        if ch in (curses.KEY_ENTER, curses.ascii.NL):
+        if ch in (curses.KEY_ENTER, ord('\n')):
             curses.curs_set(0)
             quit()
-            sl.term = t.gather()[1:]
+            sl.term = t.gather()[1:].lower()
             break
         t.do_command(ch)
         pat = t.gather()
@@ -236,12 +269,12 @@ def handle_search(sl):
             sl.goto(initial)
             quit()
             break
-        pat = pat[1:]
+        pat = pat[1:].lower()
         if not pat:
             sl.goto(initial)
         found = False
         for index, line in sl.get_lines(initial, initial - 1):
-            if line.startswith(pat):
+            if line.lower().startswith(pat):
                 found = True
                 sl.goto(index)
                 break
