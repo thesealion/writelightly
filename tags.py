@@ -29,23 +29,28 @@ def main(screen):
     items = sorted(sorted(tags.items(), key=lambda i: i[0]),
                    key=lambda i: len(i[1]), reverse=True)
     tl = ['%s (%d)' % (item[0], len(item[1])) for item in items]
-    sl = ScrollableList(tl, screen)
+    sw = curses.newwin(0, 30, 0, 0)
+    sw.keypad(1)
+    sl = ScrollableList(tl, sw)
     sl.draw()
     nw = curses.newwin(10, 50, 1, 30)
+    tw = curses.newwin(1, 50, 0, 30)
     def tag_info(index):
         tag, dates = items[index]
         d = dates[-1]
-        screen.addstr(0, 30, 'Last entry:', curses.A_BOLD)
-        screen.refresh()
+        tw.addstr(0, 0, 'Last entry:', curses.A_BOLD)
+        tw.refresh()
         Metadata.get(d.year, d.month).show(d.day, nw)
     tag_info(sl.get_current_index())
     while 1:
-        c = screen.getch()
+        c = sw.getch()
         if c == ord('q'):
             break
         elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
             tag, dates = items[sl.get_current_index()]
-            show_date_list(tag, dates, screen)
+            tw.clear()
+            tw.refresh()
+            show_date_list(tag, dates, sw, nw)
             sl.draw()
             tag_info(sl.get_current_index())
         else:
@@ -53,11 +58,10 @@ def main(screen):
             tag_info(sl.get_current_index())
     Metadata.write_all()
 
-def show_date_list(tag, dates, window):
+def show_date_list(tag, dates, window, nw):
     labels = map(format_date, dates)
     sl = ScrollableList(labels, window, tag)
     sl.draw()
-    nw = curses.newwin(10, 50, 0, 30)
     date = dates[sl.get_current_index()]
     metadata = Metadata.get(date.year, date.month)
     metadata.show(date.day, nw)
