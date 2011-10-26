@@ -55,3 +55,8 @@ class TextInput(object):
     def gather(self):
         return ''.join(self.value)
 
+    def move_to_new_window(self, window):
+        self.win = window
+        window.keypad(1)
+        self.update()
+

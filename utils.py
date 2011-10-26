@@ -73,3 +73,32 @@ def parse_date(date):
             d = m.groupdict()
             return datetime.date(int(d['year']), int(d['month']), int(d['day']))
     return None
+
+def get_char(win):
+    def get_check_next_byte():
+        c = win.getch()
+        if 128 <= c <= 191:
+            return c
+        else:
+            raise UnicodeError
+
+    bytes = []
+    c = win.getch()
+    if c <= 127:
+        return c
+    elif 194 <= c <= 223:
+        bytes.append(c)
+        bytes.append(get_check_next_byte())
+    elif 224 <= c <= 239:
+        bytes.append(c)
+        bytes.append(get_check_next_byte())
+        bytes.append(get_check_next_byte())
+    elif 240 <= c <= 244:
+        bytes.append(c)
+        bytes.append(get_check_next_byte())
+        bytes.append(get_check_next_byte())
+        bytes.append(get_check_next_byte())
+    else:
+        return c
+    buf = ''.join([chr(b) for b in bytes])
+    return buf

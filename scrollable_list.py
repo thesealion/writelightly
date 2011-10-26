@@ -2,39 +2,13 @@ import curses
 from textinput import TextInput
 import curses.ascii
 import textwrap
-
-def get_char(win):
-    def get_check_next_byte():
-        c = win.getch()
-        if 128 <= c <= 191:
-            return c
-        else:
-            raise UnicodeError
-
-    bytes = []
-    c = win.getch()
-    if c <= 127:
-        return c
-    elif 194 <= c <= 223:
-        bytes.append(c)
-        bytes.append(get_check_next_byte())
-    elif 224 <= c <= 239:
-        bytes.append(c)
-        bytes.append(get_check_next_byte())
-        bytes.append(get_check_next_byte())
-    elif 240 <= c <= 244:
-        bytes.append(c)
-        bytes.append(get_check_next_byte())
-        bytes.append(get_check_next_byte())
-        bytes.append(get_check_next_byte())
-    else:
-        return c
-    buf = ''.join([chr(b) for b in bytes])
-    return buf
+from utils import get_char
 
 class ScrollableList(object):
-    def __init__(self, lines, window, heading=None):
-        self.window = window
+    def __init__(self, lines, screen, heading=None):
+        self.screen = screen
+        self.window = curses.newwin(0, 30, 0, 0)
+        self.window.keypad(1)
         y, x = self.window.getmaxyx()
         self.lines, self.items = [], []
         self.original = {}
@@ -60,6 +34,7 @@ class ScrollableList(object):
         self.ibottom = self.lines[self.bottom][0]
         self.current = self.itop
         self.term = None
+        self.search_mode = False
 
     def draw(self):
         self.window.clear()
@@ -162,6 +137,10 @@ class ScrollableList(object):
         return self.current
 
     def resize(self):
+        y, x = self.screen.getmaxyx()
+        if self.search_mode:
+            y -= 1
+        self.window.resize(y, 30)
         new_ysize = self.window.getmaxyx()[0] - self.offset
         dif = new_ysize - self.ysize
         self.ysize = new_ysize
@@ -257,19 +236,13 @@ def handle_keypress(char, sl):
         handle_search(sl)
 
 def handle_search(sl):
-    y, x = sl.window.getmaxyx()
-    sl.window.resize(y - 1, x)
+    sl.search_mode = True
     sl.resize()
 
     initial = sl.current
 
-    def quit():
-        curses.curs_set(0)
-        sl.window.resize(y, x)
-        sl.resize()
-
     maxx = 50
-    tw = curses.newwin(1, maxx, sl.window.getbegyx()[0] + y - 1, 0)
+    tw = curses.newwin(1, maxx, sl.window.getbegyx()[0] + sl.window.getmaxyx()[0], 0)
     t = TextInput(tw, '/')
     curses.curs_set(1)
     while 1:
@@ -277,18 +250,20 @@ def handle_search(sl):
             ch = get_char(tw)
         except KeyboardInterrupt:
             sl._goto(initial)
-            quit()
             break
         if ch in (curses.KEY_ENTER, ord('\n')):
             curses.curs_set(0)
-            quit()
             sl.term = t.gather()[1:].lower()
             break
+        elif ch == curses.KEY_RESIZE:
+            sl.resize()
+            tw = curses.newwin(1, maxx, sl.window.getbegyx()[0] + sl.window.getmaxyx()[0], 0)
+            t.move_to_new_window(tw)
+            continue
         t.do_command(ch)
         pat = t.gather()
         if not pat:
             sl._goto(initial)
-            quit()
             break
         pat = pat[1:].lower()
         if not pat:
@@ -301,5 +276,8 @@ def handle_search(sl):
                 break
         if not found:
             sl._goto(initial)
+    curses.curs_set(0)
+    sl.search_mode = False
+    sl.resize()
 
 

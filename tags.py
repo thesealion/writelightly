@@ -29,9 +29,7 @@ def main(screen):
     items = sorted(sorted(tags.items(), key=lambda i: i[0]),
                    key=lambda i: len(i[1]), reverse=True)
     tl = ['%s (%d)' % (item[0], len(item[1])) for item in items]
-    sw = curses.newwin(0, 30, 0, 0)
-    sw.keypad(1)
-    sl = ScrollableList(tl, sw)
+    sl = ScrollableList(tl, screen)
     sl.draw()
     nw = curses.newwin(10, 50, 1, 30)
     tw = curses.newwin(1, 50, 0, 30)
@@ -43,14 +41,14 @@ def main(screen):
         Metadata.get(d.year, d.month).show(d.day, nw)
     tag_info(sl.get_current_index())
     while 1:
-        c = sw.getch()
+        c = sl.window.getch()
         if c == ord('q'):
             break
         elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
             tag, dates = items[sl.get_current_index()]
             tw.clear()
             tw.refresh()
-            show_date_list(tag, dates, sw, nw)
+            show_date_list(tag, dates, screen, nw)
             sl.draw()
             tag_info(sl.get_current_index())
         else:
@@ -66,7 +64,7 @@ def show_date_list(tag, dates, window, nw):
     metadata = Metadata.get(date.year, date.month)
     metadata.show(date.day, nw)
     while 1:
-        c = window.getch()
+        c = sl.window.getch()
         if curses.keyname(c) == '^O' or c == ord('q'):
             break
         elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
