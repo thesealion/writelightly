@@ -1,6 +1,7 @@
 import curses
 from textinput import TextInput
 import curses.ascii
+import textwrap
 
 def get_char(win):
     def get_check_next_byte():
@@ -33,15 +34,31 @@ def get_char(win):
 
 class ScrollableList(object):
     def __init__(self, lines, window, heading=None):
-        self.lines = lines
-        self.last = len(self.lines) - 1
         self.window = window
+        y, x = self.window.getmaxyx()
+        self.lines, self.items = [], []
+        self.original = {}
+        i = 0
+        j = 0
+        for line in lines:
+            cl = []
+            for l in textwrap.wrap(line, x-1):
+                self.lines.append((j, l))
+                cl.append(i)
+                i += 1
+            self.items.append(cl)
+            if len(cl) > 1:
+                self.original[j] = line
+            j += 1
+        self.last = len(self.lines) - 1
         self.heading = heading
         self.offset = len(heading.split('\n')) if heading else 0
-        self.ysize = self.window.getmaxyx()[0] - self.offset
+        self.ysize = y - self.offset
         self.top = 0
         self.bottom = len(self.lines[:self.ysize]) - 1
-        self.current = self.top
+        self.itop = 0
+        self.ibottom = self.lines[self.bottom][0]
+        self.current = self.itop
         self.term = None
 
     def draw(self):
@@ -49,58 +66,79 @@ class ScrollableList(object):
         if self.heading:
             for index, line in enumerate(self.heading.split('\n')):
                 self.window.addstr(index, 0, line, curses.A_BOLD)
-        for index, item in enumerate(self.lines[self.top:self.bottom+1]):
-            self.window.addstr(index + self.offset, 0, item)
+        for index, (item_id, line) in enumerate(self.lines[self.top:self.bottom+1]):
+            self.window.addstr(index + self.offset, 0, line)
         self._change()
 
     def _change(self, highlight=True):
         attr = curses.A_REVERSE if highlight else 0
-        self.window.addstr(self.current - self.top + self.offset, 0,
-                           self.lines[self.current], attr)
+        for line_id in self.items[self.current]:
+            if self.top <= line_id <= self.bottom:
+                self.window.addstr(line_id - self.top + self.offset, 0,
+                                   self.lines[line_id][1], attr)
         self.window.refresh()
 
+    def _scroll(self, lines):
+        self.top += lines
+        self.bottom += lines
+        self.itop = self.lines[self.top][0]
+        self.ibottom = self.lines[self.bottom][0]
+        if not self.itop <= self.current <= self.ibottom:
+            self.current = self.itop if lines > 0 else self.ibottom
+        self.draw()
+
+    def _goto(self, index):
+        self._change(False)
+        self.current = index
+        lines = self.items[index]
+        first_line_index, last_line_index = lines[0], lines[-1]
+        if first_line_index < self.top:
+            self._scroll(first_line_index - self.top)
+        elif last_line_index > self.bottom:
+            self._scroll(last_line_index - self.bottom)
+        else:
+            self._change()
+
     def move_down(self):
-        if self.current < self.bottom:
+        if self.current < self.ibottom:
             self._change(False)
             self.current += 1
-            self._change()
+            last_line_id = self.items[self.current][-1]
+            if last_line_id > self.bottom:
+                self._scroll(last_line_id - self.bottom)
+            else:
+                self._change()
         elif self.bottom < self.last:
-            self.top += 1
-            self.bottom += 1
             self.current += 1
-            self.draw()
+            last_line_id = self.items[self.current][-1]
+            self._scroll(last_line_id - self.bottom)
 
     def move_up(self):
-        if self.current > self.top:
+        if self.current > self.itop:
             self._change(False)
             self.current -= 1
-            self._change()
+            first_line_id = self.items[self.current][0]
+            if first_line_id < self.top:
+                self._scroll(first_line_id - self.top)
+            else:
+                self._change()
         elif self.top > 0:
-            self.top -= 1
-            self.bottom -= 1
             self.current -= 1
-            self.draw()
+            first_line_id = self.items[self.current][0]
+            self._scroll(first_line_id - self.top)
 
     def scroll_down(self, lines=1):
         if self.bottom < self.last:
             dif = self.last - self.bottom
             if lines > dif:
                 lines = dif
-            self.top += lines
-            self.bottom += lines
-            if self.current < self.top:
-                self.current = self.top
-            self.draw()
+            self._scroll(lines)
 
     def scroll_up(self, lines=1):
         if self.top > 0:
             if lines > self.top:
                 lines = self.top
-            self.top -= lines
-            self.bottom -= lines
-            if self.current > self.bottom:
-                self.current = self.bottom
-            self.draw()
+            self._scroll(-lines)
 
     def scroll_screen_down(self):
         self.scroll_down(self.ysize)
@@ -115,18 +153,10 @@ class ScrollableList(object):
         self.scroll_up(self.ysize // 2)
 
     def move_to_top(self):
-        self.top = 0
-        self.bottom = len(self.lines[:self.ysize]) - 1
-        self.current = 0
-        self.draw()
+        self._goto(0)
 
     def move_to_bottom(self):
-        self.bottom = self.last
-        self.top = self.bottom - self.ysize + 1
-        if self.top < 0:
-            self.top = 0
-        self.current = self.bottom
-        self.draw()
+        self._goto(len(self.items) - 1)
 
     def get_current_index(self):
         return self.current
@@ -143,55 +173,46 @@ class ScrollableList(object):
                 top_lines = self.top
                 up = dif - down if top_lines >= dif - down else top_lines
                 self.top -= up
+            self.itop = self.lines[self.top][0]
+            self.ibottom = self.lines[self.bottom][0]
         elif dif < 0: #window decreased
             if self.ysize <= len(self.lines):
                 self.bottom = self.top + len(self.lines[self.top:][:self.ysize]) - 1
-                if self.current > self.bottom:
-                    self.current = self.bottom
+                self.ibottom = self.lines[self.bottom][0]
+                if self.current > self.ibottom:
+                    self.current = self.ibottom
         else: #nothing changed
             return
         self.draw()
 
-    def goto(self, index):
-        if self.top <= index <= self.bottom:
-            self._change(False)
-            self.current = index
-            self._change()
-        elif index < self.top:
-            dif = self.top - index
-            self.top -= dif
-            self.current = self.top
-            self.bottom -= dif
-            self.draw()
-        elif index > self.bottom:
-            dif = index - self.bottom
-            self.top += dif
-            self.bottom += dif
-            self.current = self.bottom
-            self.draw()
-
-    def get_lines(self, start, stop, reverse=False):
+    def get_items(self, start, stop, reverse=False):
         step = 1 if not reverse else -1
+        last = len(self.items) - 1
         if stop < 0:
-            stop = self.last
-        elif stop > self.last:
+            stop = last
+        elif stop > last:
             stop = 0
         if start < 0:
-            start = self.last
-        elif start > self.last:
+            start = last
+        elif start > last:
             start = 0
         while 1:
             try:
-                yield start, self.lines[start]
+                if start in self.original:
+                    line = self.original[start]
+                else:
+                    line = self.lines[self.items[start][0]][1]
             except IndexError:
                 pass
+            else:
+                yield start, line
             if start == stop:
                 break
             start += step
-            if not reverse and start > self.last:
+            if not reverse and start > last:
                 start = 0
             elif reverse and start < 0:
-                start = self.last
+                start = last
 
 def handle_keypress(char, sl):
     try:
@@ -228,9 +249,9 @@ def handle_keypress(char, sl):
             params = (a, b)
         else:
             params = (b, a, True)
-        for index, line in sl.get_lines(*params):
+        for index, line in sl.get_items(*params):
             if line.lower().startswith(sl.term):
-                sl.goto(index)
+                sl._goto(index)
                 break
     elif char == ord('/'):
         handle_search(sl)
@@ -255,7 +276,7 @@ def handle_search(sl):
         try:
             ch = get_char(tw)
         except KeyboardInterrupt:
-            sl.goto(initial)
+            sl._goto(initial)
             quit()
             break
         if ch in (curses.KEY_ENTER, ord('\n')):
@@ -266,19 +287,19 @@ def handle_search(sl):
         t.do_command(ch)
         pat = t.gather()
         if not pat:
-            sl.goto(initial)
+            sl._goto(initial)
             quit()
             break
         pat = pat[1:].lower()
         if not pat:
-            sl.goto(initial)
+            sl._goto(initial)
         found = False
-        for index, line in sl.get_lines(initial, initial - 1):
+        for index, line in sl.get_items(initial, initial - 1):
             if line.lower().startswith(pat):
                 found = True
-                sl.goto(index)
+                sl._goto(index)
                 break
         if not found:
-            sl.goto(initial)
+            sl._goto(initial)
 
 
