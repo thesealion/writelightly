@@ -1,20 +1,22 @@
 import datetime
 import curses
 from utils import lastday
+from screen import ScreenManager, ScreenError
 
 class Calendar(object):
-    def __init__(self, year, month, window, init_day=None,
+    minx = 20
+    miny = 10
+
+    def __init__(self, year, month, init_day=None,
                  is_bold=lambda date: False):
+        self.window = curses.newwin(*ScreenManager.get_left_area())
         self.year, self.month = year, month
-        self.data = []
         self.selected = ()
-        self.window = window
         if not init_day:
             init_day = datetime.date.today().day
         self.init_day = init_day
         self.is_bold = is_bold
 
-    def draw(self):
         first = datetime.date(self.year, self.month, 1)
         x, y = 0, 1
         week = [None] * first.weekday()
@@ -36,10 +38,13 @@ class Calendar(object):
         if week:
             data.append(week + [None] * (7 - len(week)))
         self.data = data
+        self.miny = len(self.data) + 1
+
+    def draw(self):
         self.window.clear()
         self.window.addstr(0, 0, 'Mo Tu We Th Fr Sa Su')
         init_day = self.get_current_day() or self.init_day
-        for w_ind, week in enumerate(data):
+        for w_ind, week in enumerate(self.data):
             for d_ind, day in enumerate(week):
                 if day is None:
                     continue
@@ -125,4 +130,13 @@ class Calendar(object):
         x, y, _, d = self.data[w_ind][d_ind]
         self.data[w_ind][d_ind] = (x, y, ee, d)
         self._change(True)
+
+    def resize(self, y, x):
+        if y < self.miny or x < self.minx:
+            raise ScreenError('Screen is too small')
+        self.window.resize(y, x)
+
+    def move(self, y0, x0):
+        if self.window.getbegyx() != (y0, x0):
+            self.window.mvwin(y0, x0)
 

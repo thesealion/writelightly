@@ -3,27 +3,20 @@ from textinput import TextInput
 import curses.ascii
 import textwrap
 from utils import get_char
+from screen import ScreenManager, ScreenError
+
+class ScrollableListError(Exception):
+    pass
 
 class ScrollableList(object):
-    def __init__(self, lines, screen, heading=None):
-        self.screen = screen
-        self.window = curses.newwin(0, 30, 0, 0)
+    minx = 10
+    miny = 3
+
+    def __init__(self, lines, heading=None):
+        self.window = curses.newwin(*ScreenManager.get_left_area())
         self.window.keypad(1)
         y, x = self.window.getmaxyx()
-        self.lines, self.items = [], []
-        self.original = {}
-        i = 0
-        j = 0
-        for line in lines:
-            cl = []
-            for l in textwrap.wrap(line, x-1):
-                self.lines.append((j, l))
-                cl.append(i)
-                i += 1
-            self.items.append(cl)
-            if len(cl) > 1:
-                self.original[j] = line
-            j += 1
+        self._calc_lines(lines)
         self.last = len(self.lines) - 1
         self.heading = heading
         self.offset = len(heading.split('\n')) if heading else 0
@@ -35,6 +28,32 @@ class ScrollableList(object):
         self.current = self.itop
         self.term = None
         self.search_mode = False
+
+    def _calc_lines(self, lines=None, width=None):
+        if lines is None:
+            if not self.lines:
+                raise ScrollableListError('no lines to recalc')
+            def get_original(index):
+                item = self.items[index]
+                if len(item) == 1:
+                    return self.lines[item[0]][1]
+                return self.original[index]
+            lines = map(get_original, range(len(self.items)))
+        if width is None:
+            width = self.window.getmaxyx()[1] - 1
+        self.lines, self.items = [], []
+        self.original = {}
+        i = j = 0
+        for line in lines:
+            cl = []
+            for l in textwrap.wrap(line, width):
+                self.lines.append((j, l))
+                cl.append(i)
+                i += 1
+            self.items.append(cl)
+            if len(cl) > 1:
+                self.original[j] = line
+            j += 1
 
     def draw(self):
         self.window.clear()
@@ -136,33 +155,25 @@ class ScrollableList(object):
     def get_current_index(self):
         return self.current
 
-    def resize(self):
-        y, x = self.screen.getmaxyx()
+    def resize(self, y=None, x=None):
+        if not y:
+            y = ScreenManager.get_left_area()[0]
+        if not x:
+            x = ScreenManager.get_left_area()[1]
         if self.search_mode:
             y -= 1
-        self.window.resize(y, 30)
+        if y < self.miny or x < self.minx:
+            raise ScreenError('Screen is too small')
+        self.window.resize(y, x)
+        self._calc_lines()
         new_ysize = self.window.getmaxyx()[0] - self.offset
-        dif = new_ysize - self.ysize
         self.ysize = new_ysize
-        if dif > 0: #window increased
-            bottom_lines = self.last - self.bottom
-            down = dif if bottom_lines >= dif else bottom_lines
-            self.bottom += down
-            if down < dif:
-                top_lines = self.top
-                up = dif - down if top_lines >= dif - down else top_lines
-                self.top -= up
-            self.itop = self.lines[self.top][0]
-            self.ibottom = self.lines[self.bottom][0]
-        elif dif < 0: #window decreased
-            if self.ysize <= len(self.lines):
-                self.bottom = self.top + len(self.lines[self.top:][:self.ysize]) - 1
-                self.ibottom = self.lines[self.bottom][0]
-                if self.current > self.ibottom:
-                    self.current = self.ibottom
-        else: #nothing changed
-            return
-        self.draw()
+        self.bottom = self.top + self.ysize - 1
+        if self.bottom > self.last:
+            self.bottom = self.last
+        self.ibottom = self.lines[self.bottom][0]
+        if self.current > self.ibottom:
+            self.current = self.ibottom
 
     def get_items(self, start, stop, reverse=False):
         step = 1 if not reverse else -1
@@ -193,6 +204,10 @@ class ScrollableList(object):
             elif reverse and start < 0:
                 start = last
 
+    def move(self, y0, x0):
+        if self.window.getbegyx() != (y0, x0):
+            self.window.mvwin(y0, x0)
+
 def handle_keypress(char, sl):
     try:
         kn = curses.keyname(char)
@@ -219,7 +234,7 @@ def handle_keypress(char, sl):
     elif kn == '^U':
         sl.scroll_halfscreen_up()
     elif char == curses.KEY_RESIZE:
-        sl.resize()
+        ScreenManager.resize()
     elif char in (ord('n'), ord('N')):
         if not sl.term:
             return
@@ -244,7 +259,10 @@ def handle_search(sl):
     maxx = 50
     tw = curses.newwin(1, maxx, sl.window.getbegyx()[0] + sl.window.getmaxyx()[0], 0)
     t = TextInput(tw, '/')
-    curses.curs_set(1)
+    try:
+        curses.curs_set(1)
+    except curses.error:
+        pass
     while 1:
         try:
             ch = get_char(tw)
@@ -252,7 +270,10 @@ def handle_search(sl):
             sl._goto(initial)
             break
         if ch in (curses.KEY_ENTER, ord('\n')):
-            curses.curs_set(0)
+            try:
+                curses.curs_set(0)
+            except curses.error:
+                pass
             sl.term = t.gather()[1:].lower()
             break
         elif ch == curses.KEY_RESIZE:
@@ -276,8 +297,12 @@ def handle_search(sl):
                 break
         if not found:
             sl._goto(initial)
-    curses.curs_set(0)
+    try:
+        curses.curs_set(0)
+    except curses.error:
+        pass
     sl.search_mode = False
     sl.resize()
+    sl.draw()
 
 

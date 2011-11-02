@@ -11,23 +11,26 @@ import textwrap
 from calendar import Calendar, lastday
 from metadata import Metadata
 import conf
-from utils import init_screen, deinit_screen, entry_exists, parse_date
+from utils import entry_exists, parse_date
+from screen import ScreenManager, RightWindowManager
 
 locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
 
 data_dir = os.path.expanduser(conf.data_dir)
 
-def main(stdscr):
+def main():
     today = datetime.date.today()
     year, month = today.year, today.month
-    cal = Calendar(year, month, stdscr, 1, entry_exists)
+    cal = Calendar(year, month, 1, entry_exists)
+    ScreenManager.add_left(cal)
     cal.draw()
     metadata = Metadata.get(year, month)
-    nw = curses.newwin(10, 50, 1, 31)
+    rwm = RightWindowManager()
+    ScreenManager.add_right(rwm)
     d = cal.get_current_date()
-    metadata.show(d.day, nw)
+    rwm.show_text(metadata.text(d.day))
     while 1:
-        c = stdscr.getch()
+        c = cal.window.getch()
         if c == ord('q'):
             break
         if c in (ord('h'), curses.KEY_LEFT):
@@ -35,40 +38,47 @@ def main(stdscr):
             if not moved:
                 year, month = (year if month != 1 else year - 1,
                               month - 1 if month != 1 else 12)
-                cal = Calendar(year, month, stdscr, lastday(year, month),
+                cal = Calendar(year, month, lastday(year, month),
                                entry_exists)
+                ScreenManager.add_left(cal)
                 cal.draw()
                 metadata = Metadata.get(year, month)
             d = cal.get_current_date()
-            metadata.show(d.day, nw)
+            rwm.show_text(metadata.text(d.day))
         elif c in (ord('l'), curses.KEY_RIGHT):
             moved = cal.move_right()
             if not moved:
                 year, month = (year if month != 12 else year + 1,
                               month + 1 if month != 12 else 1)
-                cal = Calendar(year, month, stdscr, 1, entry_exists)
+                cal = Calendar(year, month, 1, entry_exists)
+                ScreenManager.add_left(cal)
                 cal.draw()
                 metadata = Metadata.get(year, month)
             d = cal.get_current_date()
-            metadata.show(d.day, nw)
+            rwm.show_text(metadata.text(d.day))
         elif c in (ord('j'), curses.KEY_DOWN):
             cal.move_down()
             d = cal.get_current_date()
-            metadata.show(d.day, nw)
+            rwm.show_text(metadata.text(d.day))
         elif c in (ord('k'), curses.KEY_UP):
             cal.move_up()
             d = cal.get_current_date()
-            metadata.show(d.day, nw)
+            rwm.show_text(metadata.text(d.day))
         elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
             date = cal.get_current_date()
             edit_date(date)
-            cal.set_entry_exists_for_current_day(entry_exists(date))
             metadata.load_day(date.day)
-            metadata.show(date.day, nw)
+            cal.set_entry_exists_for_current_day(entry_exists(date))
+            rwm.show_text(metadata.text(date.day))
+        elif c == curses.KEY_RESIZE:
+            ScreenManager.resize()
         elif c in (ord('t'),):
             import tags
-            tags.main(stdscr)
+            tags.main()
+            ScreenManager.right.set_title()
             cal.draw()
+            d = cal.get_current_date()
+            rwm.show_text(metadata.text(d.day))
     Metadata.write_all()
 
 def edit_date(date):
@@ -126,12 +136,11 @@ if __name__ == '__main__':
         metadata.load_day(date.day)
         metadata.write()
     else:
-        screen = init_screen()
-
+        ScreenManager.init()
         try:
-            main(screen)
+            main()
         finally:
-            deinit_screen(screen)
+            ScreenManager.quit()
 
 
 

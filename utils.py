@@ -1,24 +1,6 @@
-import curses
 import datetime
 import os
 import re
-
-def init_screen():
-    screen = curses.initscr()
-    curses.noecho()
-    curses.cbreak()
-    screen.keypad(1)
-    try:
-        curses.curs_set(0)
-    except curses.error:
-        pass
-    return screen
-
-def deinit_screen(screen):
-    screen.keypad(0)
-    curses.nocbreak()
-    curses.echo()
-    curses.endwin()
 
 def lastday(*args):
     if not args:

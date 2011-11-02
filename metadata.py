@@ -89,17 +89,16 @@ class Metadata(object):
                 yaml.dump({'data': self.data, 'tags': self.tags}, f)
             self._dirty = False
 
-    def show(self, day, window):
+    def text(self, day):
         data = self.get_data_for_day(day)
-        window.clear()
-        window.addstr(0, 0, format_date(datetime.date(self.year, self.month, day)))
+        output = [format_date(datetime.date(self.year, self.month, day))]
         try:
             m = '%(lines)d lines, %(words)d words, %(size)s' % (data)
             tags = ', '.join(data['tags'])
         except TypeError:
             m = 'No entry for selected date'
             tags = None
-        window.addstr(1, 0, m)
+        output.append(m)
         if tags:
-            window.addstr(2, 0, 'Tags: %s' % tags)
-        window.refresh()
+            output.append('Tags: %s' % tags)
+        return '\n'.join(output)

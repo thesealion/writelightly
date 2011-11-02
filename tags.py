@@ -6,11 +6,13 @@ import conf
 from metadata import Metadata, format_date
 from scrollable_list import ScrollableList, handle_keypress
 from wl import edit_date
-from utils import init_screen, deinit_screen, get_all_months
+from utils import get_all_months
+from screen import ScreenManager, RightWindowManager, ScreenError
 
 data_dir = os.path.expanduser(conf.data_dir)
 
-def main(screen):
+def main():
+    screen = ScreenManager.screen
     screen.addstr(0, 0, 'loading...')
     screen.refresh()
 
@@ -29,16 +31,15 @@ def main(screen):
     items = sorted(sorted(tags.items(), key=lambda i: i[0]),
                    key=lambda i: len(i[1]), reverse=True)
     tl = ['%s (%d)' % (item[0], len(item[1])) for item in items]
-    sl = ScrollableList(tl, screen)
+    sl = ScrollableList(tl)
+    ScreenManager.add_left(sl)
     sl.draw()
-    nw = curses.newwin(10, 50, 1, 30)
-    tw = curses.newwin(1, 50, 0, 30)
+    rwm = RightWindowManager('Last entry:')
+    ScreenManager.add_right(rwm)
     def tag_info(index):
         tag, dates = items[index]
         d = dates[-1]
-        tw.addstr(0, 0, 'Last entry:', curses.A_BOLD)
-        tw.refresh()
-        Metadata.get(d.year, d.month).show(d.day, nw)
+        rwm.show_text(Metadata.get(d.year, d.month).text(d.day))
     tag_info(sl.get_current_index())
     while 1:
         c = sl.window.getch()
@@ -46,9 +47,9 @@ def main(screen):
             break
         elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
             tag, dates = items[sl.get_current_index()]
-            tw.clear()
-            tw.refresh()
-            show_date_list(tag, dates, screen, nw)
+            show_date_list(tag, dates)
+            ScreenManager.add_left(sl)
+            ScreenManager.right.set_title('Last entry:')
             sl.draw()
             tag_info(sl.get_current_index())
         else:
@@ -56,13 +57,16 @@ def main(screen):
             tag_info(sl.get_current_index())
     Metadata.write_all()
 
-def show_date_list(tag, dates, window, nw):
+def show_date_list(tag, dates):
     labels = map(format_date, dates)
-    sl = ScrollableList(labels, window, tag)
+    sl = ScrollableList(labels, tag)
+    ScreenManager.add_left(sl)
     sl.draw()
     date = dates[sl.get_current_index()]
     metadata = Metadata.get(date.year, date.month)
-    metadata.show(date.day, nw)
+    rwm = ScreenManager.right
+    rwm.set_title()
+    rwm.show_text(metadata.text(date.day))
     while 1:
         c = sl.window.getch()
         if curses.keyname(c) == '^O' or c == ord('q'):
@@ -72,12 +76,11 @@ def show_date_list(tag, dates, window, nw):
             edit_date(date)
             sl.draw()
             metadata.load_day(date.day)
-            metadata.show(date.day, nw)
+            rwm.show_text(metadata.text(date.day))
         else:
             handle_keypress(c, sl)
             date = dates[sl.get_current_index()]
-            metadata = Metadata.get(date.year, date.month)
-            metadata.show(date.day, nw)
+            rwm.show_text(Metadata.get(date.year, date.month).text(date.day))
 
 if __name__ == '__main__':
     args = sys.argv[1:]
@@ -92,17 +95,19 @@ if __name__ == '__main__':
         if not dates:
             print 'No entries for tag %s' % tag
         else:
-            screen = init_screen()
+            ScreenManager.init()
             try:
-                show_date_list(tag, dates, screen)
+                show_date_list(tag, dates)
             finally:
-                deinit_screen(screen)
+                ScreenManager.quit()
     else:
-        screen = init_screen()
+        ScreenManager.init()
         try:
-            main(screen)
+            main()
+        except ScreenError, exc:
+            ScreenManager.show_error(exc)
         finally:
-            deinit_screen(screen)
+            ScreenManager.quit()
 
 
 
