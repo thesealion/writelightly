@@ -2,45 +2,43 @@
 
 import curses
 import datetime
-import locale
 import os
-import subprocess
 import sys
-import tempfile
 import textwrap
 from calendar import Calendar, lastday
 from metadata import Metadata
-import conf
 from utils import entry_exists, parse_date
 from screen import ScreenManager, RightWindowManager
+import tags
+from edit import edit_date
 
+import locale
 locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
-
-data_dir = os.path.expanduser(conf.data_dir)
 
 def main():
     today = datetime.date.today()
     year, month = today.year, today.month
     cal = Calendar(year, month, 1, entry_exists)
-    ScreenManager.add_left(cal)
-    cal.draw()
     metadata = Metadata.get(year, month)
     rwm = RightWindowManager()
-    ScreenManager.add_right(rwm)
+    ScreenManager.draw_all()
     d = cal.get_current_date()
     rwm.show_text(metadata.text(d.day))
     while 1:
         c = cal.window.getch()
         if c == ord('q'):
             break
+        if c == curses.KEY_RESIZE:
+            ScreenManager.resize()
+        if cal.hidden:
+            continue
         if c in (ord('h'), curses.KEY_LEFT):
             moved = cal.move_left()
             if not moved:
                 year, month = (year if month != 1 else year - 1,
                               month - 1 if month != 1 else 12)
                 cal = Calendar(year, month, lastday(year, month),
-                               entry_exists)
-                ScreenManager.add_left(cal)
+                               entry_exists, cal.area_id)
                 cal.draw()
                 metadata = Metadata.get(year, month)
             d = cal.get_current_date()
@@ -50,8 +48,7 @@ def main():
             if not moved:
                 year, month = (year if month != 12 else year + 1,
                               month + 1 if month != 12 else 1)
-                cal = Calendar(year, month, 1, entry_exists)
-                ScreenManager.add_left(cal)
+                cal = Calendar(year, month, 1, entry_exists, cal.area_id)
                 cal.draw()
                 metadata = Metadata.get(year, month)
             d = cal.get_current_date()
@@ -70,59 +67,17 @@ def main():
             metadata.load_day(date.day)
             cal.set_entry_exists_for_current_day(entry_exists(date))
             rwm.show_text(metadata.text(date.day))
-        elif c == curses.KEY_RESIZE:
-            ScreenManager.resize()
         elif c in (ord('t'),):
-            import tags
-            tags.main()
-            ScreenManager.right.set_title()
-            cal.draw()
+            tags.main(cal.area_id, rwm)
+            ScreenManager.restore_area(cal.area_id)
+            cal.reinit()
+            rwm.set_title()
             d = cal.get_current_date()
             rwm.show_text(metadata.text(d.day))
     Metadata.write_all()
 
-def edit_date(date):
-    filename = str(date)
-    if os.path.isfile(data_dir):
-        print '%s is not a directory' % data_dir
-        sys.exit()
-    try:
-        os.mkdir(data_dir)
-    except OSError:
-        pass
-
-    path = os.path.join(data_dir, filename)
-    if os.path.exists(path):
-        with open(path) as f:
-            content = f.read()
-        new = False
-    else:
-        content = '\n'
-        new = True
-
-    _, tmpfn = tempfile.mkstemp(text=True)
-
-    action = 'new entry' if new else 'editing entry'
-    header = '#%s %d, %d: %s\n' % (date.strftime('%B'), date.day, date.year,
-                                   action)
-    with open(tmpfn, 'w') as f:
-        f.write(header)
-        f.write(content)
-    exit_code = subprocess.call('%s %s' % (conf.editor, tmpfn), shell=True)
-
-    with open(tmpfn) as f:
-        new_content = f.read()
-    if new_content.startswith(header):
-        new_content = new_content.replace(header, '', 1)
-
-    if new_content.strip():
-        with open(path, 'w') as f:
-            f.write(new_content)
-    else:
-        if os.path.exists(path):
-            os.remove(path)
-
-    os.remove(tmpfn)
+class InvalidDataDir(Exception):
+    pass
 
 if __name__ == '__main__':
     args = sys.argv[1:]

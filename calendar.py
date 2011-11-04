@@ -1,15 +1,18 @@
 import datetime
 import curses
 from utils import lastday
-from screen import ScreenManager, ScreenError
+from screen import ScreenManager, ScreenError, ScreenArea
 
-class Calendar(object):
+class Calendar(ScreenArea):
     minx = 20
     miny = 10
+    hidden = False
 
     def __init__(self, year, month, init_day=None,
-                 is_bold=lambda date: False):
-        self.window = curses.newwin(*ScreenManager.get_left_area())
+                 is_bold=lambda date: False, *args, **kwargs):
+        super(Calendar, self).__init__(*args, **kwargs)
+        self.window = curses.newwin(*ScreenManager.get_coords(self.area_id))
+        self.window.keypad(1)
         self.year, self.month = year, month
         self.selected = ()
         if not init_day:
@@ -131,9 +134,10 @@ class Calendar(object):
         self.data[w_ind][d_ind] = (x, y, ee, d)
         self._change(True)
 
+    def enough_space(self, y, x):
+        return y >= self.miny and x >= self.minx
+
     def resize(self, y, x):
-        if y < self.miny or x < self.minx:
-            raise ScreenError('Screen is too small')
         self.window.resize(y, x)
 
     def move(self, y0, x0):

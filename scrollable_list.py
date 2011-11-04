@@ -3,17 +3,19 @@ from textinput import TextInput
 import curses.ascii
 import textwrap
 from utils import get_char
-from screen import ScreenManager, ScreenError
+from screen import ScreenManager, ScreenError, ScreenArea
 
 class ScrollableListError(Exception):
     pass
 
-class ScrollableList(object):
+class ScrollableList(ScreenArea):
     minx = 10
     miny = 3
+    hidden = False
 
-    def __init__(self, lines, heading=None):
-        self.window = curses.newwin(*ScreenManager.get_left_area())
+    def __init__(self, lines, heading=None, *args, **kwargs):
+        super(ScrollableList, self).__init__(*args, **kwargs)
+        self.window = curses.newwin(*ScreenManager.get_coords(self.area_id))
         self.window.keypad(1)
         y, x = self.window.getmaxyx()
         self._calc_lines(lines)
@@ -155,19 +157,29 @@ class ScrollableList(object):
     def get_current_index(self):
         return self.current
 
+    def enough_space(self, y, x):
+        return y >= self.miny and x >= self.minx
+
     def resize(self, y=None, x=None):
         if not y:
-            y = ScreenManager.get_left_area()[0]
+            y = ScreenManager.get_coords(self.area_id)[0]
         if not x:
-            x = ScreenManager.get_left_area()[1]
+            x = ScreenManager.get_coords(self.area_id)[1]
         if self.search_mode:
             y -= 1
-        if y < self.miny or x < self.minx:
-            raise ScreenError('Screen is too small')
         self.window.resize(y, x)
         self._calc_lines()
         new_ysize = self.window.getmaxyx()[0] - self.offset
+        dif = new_ysize - self.ysize
         self.ysize = new_ysize
+
+        bottom_lines = self.last - self.bottom
+        down = dif if bottom_lines >= dif else bottom_lines
+        if down < dif:
+            top_lines = self.top
+            up = dif - down if top_lines >= dif - down else top_lines
+            self.top -= up
+
         self.bottom = self.top + self.ysize - 1
         if self.bottom > self.last:
             self.bottom = self.last
@@ -204,9 +216,6 @@ class ScrollableList(object):
             elif reverse and start < 0:
                 start = last
 
-    def move(self, y0, x0):
-        if self.window.getbegyx() != (y0, x0):
-            self.window.mvwin(y0, x0)
 
 def handle_keypress(char, sl):
     try:
@@ -233,8 +242,6 @@ def handle_keypress(char, sl):
         sl.scroll_halfscreen_down()
     elif kn == '^U':
         sl.scroll_halfscreen_up()
-    elif char == curses.KEY_RESIZE:
-        ScreenManager.resize()
     elif char in (ord('n'), ord('N')):
         if not sl.term:
             return
