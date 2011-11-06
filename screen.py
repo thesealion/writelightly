@@ -6,10 +6,6 @@ from itertools import izip
 from abc import ABCMeta, abstractmethod
 
 class ScreenManager(object):
-    error = None
-    areas = []
-    areas_stack = {}
-
     @classmethod
     def init(cls):
         screen = curses.initscr()
@@ -21,6 +17,9 @@ class ScreenManager(object):
         except curses.error:
             pass
         cls.screen = screen
+        cls.error = None
+        cls.areas = []
+        cls.areas_stack = {}
 
     @classmethod
     def _calc(cls, exclude=[]):

@@ -18,7 +18,7 @@ locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
 def main():
     today = datetime.date.today()
     year, month = today.year, today.month
-    cal = Calendar(year, month, 1, entry_exists)
+    cal = Calendar(year, month, today.day, entry_exists)
     metadata = Metadata.get(year, month)
     rwm = RightWindowManager()
     ScreenManager.draw_all()
