@@ -1,11 +1,9 @@
 import datetime
 import yaml
 import os
-from utils import lastday, format_size, format_date
+from utils import lastday, format_size, format_date, format_time
 import conf
-
-data_dir = os.path.expanduser(conf.data_dir)
-metadata_dir = os.path.join(data_dir, 'metadata')
+from edit import get_edits
 
 class Metadata(object):
     instances = {}
@@ -31,7 +29,7 @@ class Metadata(object):
             obj.write()
 
     def get_path(self):
-        return os.path.join(metadata_dir, '%d-%d' % (self.year, self.month))
+        return os.path.join(conf.metadata_dir, '%d-%d' % (self.year, self.month))
 
     def _load(self):
         try:
@@ -50,15 +48,18 @@ class Metadata(object):
             return None
 
     def load_day(self, day):
-        path = os.path.join(data_dir, str(datetime.date(self.year, self.month, day)))
+        date = datetime.date(self.year, self.month, day)
+        month_dir = os.path.join(conf.entries_dir, date.strftime('%Y-%m'))
+        path = os.path.join(month_dir, date.strftime('%d'))
+
         lines, words, tags = 0, 0, []
         try:
             with open(path) as f:
                 for line in f:
                     if not line.strip():
                         continue
-                    if line.startswith('TAGS:'):
-                        tags += [b.strip() for b in line[5:].split(',')]
+                    if line.startswith(conf.tags_label):
+                        tags += [b.strip() for b in line[conf.tags_label:].split(',')]
                         continue
                     lines += 1
                     words += len(line.split())
@@ -66,8 +67,17 @@ class Metadata(object):
             pass
         else:
             self.data[day] = {'lines': lines, 'words': words, 'tags': tags,
-                              'size': format_size(os.path.getsize(path))}
+                              'size': format_size(os.path.getsize(path)),
+                              'edits': self._get_edits(day)}
             self._dirty = True
+
+    def _get_edits(self, day):
+        date = datetime.date(self.year, self.month, day)
+        timestamps = get_edits(date)
+        data = [timestamps[0]] # creation time
+        if len(timestamps) > 1: # include last edit time and number of edits if any
+            data += [timestamps[-1], len(timestamps) - 1]
+        return data
 
     def _load_tags(self):
         self.tags = {}
@@ -80,7 +90,7 @@ class Metadata(object):
 
     def write(self):
         try:
-            os.mkdir(metadata_dir)
+            os.mkdir(conf.metadata_dir)
         except OSError:
             pass
         if self._dirty:
@@ -93,12 +103,20 @@ class Metadata(object):
         data = self.get_data_for_day(day)
         output = [format_date(datetime.date(self.year, self.month, day))]
         try:
-            m = '%(lines)d lines, %(words)d words, %(size)s' % (data)
+            m = '%(lines)d lines, %(words)d words, %(size)s' % data
             tags = ', '.join(data['tags'])
+            edits = 'Created: %s' % format_time(data['edits'][0])
+            try:
+                edits += ', edited %d times, last: %s' % (data['edits'][2],
+                    format_time(data['edits'][1]))
+            except IndexError:
+                pass
         except TypeError:
             m = 'No entry for selected date'
-            tags = None
+            tags = edits = None
         output.append(m)
         if tags:
             output.append('Tags: %s' % tags)
+        if edits:
+            output.append(edits)
         return '\n'.join(output)

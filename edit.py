@@ -1,50 +1,69 @@
 import os
 import tempfile
+import shutil
 import subprocess
+import time
 import conf
 
-data_dir = os.path.expanduser(conf.data_dir)
+from diff_match_patch import diff_match_patch
+DMP = diff_match_patch()
+
+class InvalidDataDir(Exception):
+    pass
 
 def edit_date(date):
-    filename = str(date)
-    if os.path.isfile(data_dir):
-        print '%s is not a directory' % data_dir
-        sys.exit()
+    month_dir = os.path.join(conf.entries_dir, date.strftime('%Y-%m'))
     try:
-        os.mkdir(data_dir)
+        os.makedirs(month_dir)
     except OSError:
-        pass
+        if not os.path.exists(month_dir) or not os.path.isdir(month_dir):
+            raise InvalidDataDir
 
-    path = os.path.join(data_dir, filename)
+    fn = date.strftime('%d')
+    path = os.path.join(month_dir, fn)
     if os.path.exists(path):
-        with open(path) as f:
-            content = f.read()
+        tmp = path + '.tmp'
+        shutil.copy(path, tmp)
         new = False
     else:
-        content = '\n'
         new = True
 
-    _, tmpfn = tempfile.mkstemp(text=True)
+    exit_code = subprocess.call('%s %s' % (conf.editor, path), shell=True)
 
-    action = 'new entry' if new else 'editing entry'
-    header = '#%s %d, %d: %s\n' % (date.strftime('%B'), date.day, date.year,
-                                   action)
-    with open(tmpfn, 'w') as f:
-        f.write(header)
-        f.write(content)
-    exit_code = subprocess.call('%s %s' % (conf.editor, tmpfn), shell=True)
+    diff_dir = os.path.join(conf.diffs_dir, date.strftime('%Y-%m'))
+    try:
+        os.makedirs(diff_dir)
+    except OSError:
+        if not os.path.exists(diff_dir) or not os.path.isdir(diff_dir):
+            raise InvalidDataDir
 
-    with open(tmpfn) as f:
-        new_content = f.read()
-    if new_content.startswith(header):
-        new_content = new_content.replace(header, '', 1)
-
-    if new_content.strip():
-        with open(path, 'w') as f:
-            f.write(new_content)
+    diff_name = os.path.join(diff_dir, '%s_%d' % (fn, time.time()))
+    if new:
+        open(diff_name, 'w').close()
     else:
-        if os.path.exists(path):
-            os.remove(path)
+        with open(path) as f:
+            new_content = f.read()
+        with open(tmp) as f:
+            old_content = f.read()
+        diff = get_diff(new_content, old_content)
+        if diff:
+            with open(diff_name, 'w') as f:
+                f.write(diff)
+        os.remove(tmp)
 
-    os.remove(tmpfn)
+def get_diff(one, two):
+    diffs = DMP.diff_main(one, two)
+    DMP.diff_cleanupSemantic(diffs)
+    patches = DMP.patch_make(one, diffs)
+    return DMP.patch_toText(patches)
+
+def get_edits(date):
+    diff_dir = os.path.join(conf.diffs_dir, date.strftime('%Y-%m'))
+    try:
+        ld = os.listdir(diff_dir)
+    except OSError:
+        raise InvalidDataDir
+    day = date.strftime('%d')
+    timestamps = [int(fn.split('_')[1]) for fn in ld if fn.startswith(day)]
+    return sorted(timestamps)
 

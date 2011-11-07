@@ -30,15 +30,12 @@ def format_date(date):
     return '%s %d, %d' % (date.strftime('%B'), date.day, date.year)
 
 def get_all_months(data_dir):
-    entries = os.listdir(data_dir)
-    try:
-        entries.remove('metadata')
-    except ValueError:
-        pass
+    entries_dir = os.path.join(data_dir, 'entries')
+    entries = os.listdir(entries_dir)
 
     months = set()
     for entry in entries:
-        months.add(tuple(map(int, entry.split('-')[:2])))
+        months.add(tuple(map(int, entry.split('-'))))
 
     return sorted(sorted(list(months), key=lambda i: i[1]), key=lambda i: i[0])
 
@@ -84,3 +81,13 @@ def get_char(win):
         return c
     buf = ''.join([chr(b) for b in bytes])
     return buf
+
+def format_time(ts):
+    dt = datetime.datetime.fromtimestamp(int(ts))
+    today = datetime.date.today()
+    fmt = ' '.join(filter(None, [
+        '%Y' if dt.year != today.year else '',
+        '%b %d' if (dt.month, dt.day) != (today.month, today.day) else '',
+        '%H:%M'
+    ]))
+    return dt.strftime(fmt)

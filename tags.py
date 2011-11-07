@@ -9,8 +9,6 @@ from edit import edit_date
 from utils import get_all_months
 from screen import ScreenManager, RightWindowManager, ScreenError
 
-data_dir = os.path.expanduser(conf.data_dir)
-
 import locale
 locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
 
@@ -21,7 +19,7 @@ def main(area_id=None, rwm=None):
 
     tags = {}
 
-    for year, month in get_all_months(data_dir):
+    for year, month in get_all_months(conf.data_dir):
         m = Metadata.get(year, month)
         for tag, days in m.tags.items():
             for day in days:
@@ -98,7 +96,7 @@ if __name__ == '__main__':
     if args:
         tag = args[0]
         dates = []
-        for year, month in get_all_months(data_dir):
+        for year, month in get_all_months(conf.data_dir):
             m = Metadata.get(year, month)
             if tag in m.tags:
                 for day in m.tags[tag]:
