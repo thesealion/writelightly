@@ -216,100 +216,101 @@ class ScrollableList(ScreenArea):
             elif reverse and start < 0:
                 start = last
 
-
-def handle_keypress(char, sl):
-    try:
-        kn = curses.keyname(char)
-    except ValueError:
-        kn = ''
-    if char in (ord('j'), curses.KEY_DOWN):
-        sl.move_down()
-    elif char in (ord('k'), curses.KEY_UP):
-        sl.move_up()
-    elif kn == '^E':
-        sl.scroll_down()
-    elif kn == '^Y':
-        sl.scroll_up()
-    elif char in (ord('g'), curses.KEY_HOME):
-        sl.move_to_top()
-    elif char in (ord('G'), curses.KEY_END):
-        sl.move_to_bottom()
-    elif kn in ('^F', 'KEY_NPAGE'):
-        sl.scroll_screen_down()
-    elif kn in ('^B', 'KEY_PPAGE'):
-        sl.scroll_screen_up()
-    elif kn == '^D':
-        sl.scroll_halfscreen_down()
-    elif kn == '^U':
-        sl.scroll_halfscreen_up()
-    elif char in (ord('n'), ord('N')):
-        if not sl.term:
-            return
-        a, b = sl.current + 1, sl.current - 1
-        if char == ord('n'):
-            params = (a, b)
-        else:
-            params = (b, a, True)
-        for index, line in sl.get_items(*params):
-            if line.lower().startswith(sl.term):
-                sl._goto(index)
-                break
-    elif char == ord('/'):
-        handle_search(sl)
-
-def handle_search(sl):
-    sl.search_mode = True
-    sl.resize()
-
-    initial = sl.current
-
-    maxx = 50
-    tw = curses.newwin(1, maxx, sl.window.getbegyx()[0] + sl.window.getmaxyx()[0], 0)
-    t = TextInput(tw, '/')
-    try:
-        curses.curs_set(1)
-    except curses.error:
-        pass
-    while 1:
+    def handle_keypress(self, char):
         try:
-            ch = get_char(tw)
-        except KeyboardInterrupt:
-            sl._goto(initial)
-            break
-        if ch in (curses.KEY_ENTER, ord('\n')):
+            kn = curses.keyname(char)
+        except ValueError:
+            kn = ''
+        if char in (ord('j'), curses.KEY_DOWN):
+            self.move_down()
+        elif char in (ord('k'), curses.KEY_UP):
+            self.move_up()
+        elif kn == '^E':
+            self.scroll_down()
+        elif kn == '^Y':
+            self.scroll_up()
+        elif char in (ord('g'), curses.KEY_HOME):
+            self.move_to_top()
+        elif char in (ord('G'), curses.KEY_END):
+            self.move_to_bottom()
+        elif kn in ('^F', 'KEY_NPAGE'):
+            self.scroll_screen_down()
+        elif kn in ('^B', 'KEY_PPAGE'):
+            self.scroll_screen_up()
+        elif kn == '^D':
+            self.scroll_halfscreen_down()
+        elif kn == '^U':
+            self.scroll_halfscreen_up()
+        elif char in (ord('n'), ord('N')):
+            if not self.term:
+                return
+            a, b = self.current + 1, self.current - 1
+            if char == ord('n'):
+                params = (a, b)
+            else:
+                params = (b, a, True)
+            for index, line in self.get_items(*params):
+                if line.lower().startswith(self.term):
+                    self._goto(index)
+                    break
+        elif char == ord('/'):
+            self.handle_search()
+
+    def handle_search(self):
+        self.search_mode = True
+        self.resize()
+
+        initial = self.current
+
+        maxx = 50
+        tw = curses.newwin(1, maxx, self.window.getbegyx()[0] +
+            self.window.getmaxyx()[0], 0)
+        t = TextInput(tw, '/')
+        try:
+            curses.curs_set(1)
+        except curses.error:
+            pass
+        while 1:
             try:
-                curses.curs_set(0)
-            except curses.error:
-                pass
-            sl.term = t.gather()[1:].lower()
-            break
-        elif ch == curses.KEY_RESIZE:
-            sl.resize()
-            tw = curses.newwin(1, maxx, sl.window.getbegyx()[0] + sl.window.getmaxyx()[0], 0)
-            t.move_to_new_window(tw)
-            continue
-        t.do_command(ch)
-        pat = t.gather()
-        if not pat:
-            sl._goto(initial)
-            break
-        pat = pat[1:].lower()
-        if not pat:
-            sl._goto(initial)
-        found = False
-        for index, line in sl.get_items(initial, initial - 1):
-            if line.lower().startswith(pat):
-                found = True
-                sl._goto(index)
+                ch = get_char(tw)
+            except KeyboardInterrupt:
+                self._goto(initial)
                 break
-        if not found:
-            sl._goto(initial)
-    try:
-        curses.curs_set(0)
-    except curses.error:
-        pass
-    sl.search_mode = False
-    sl.resize()
-    sl.draw()
+            if ch in (curses.KEY_ENTER, ord('\n')):
+                try:
+                    curses.curs_set(0)
+                except curses.error:
+                    pass
+                self.term = t.gather()[1:].lower()
+                break
+            elif ch == curses.KEY_RESIZE:
+                self.resize()
+                tw = curses.newwin(1, maxx, self.window.getbegyx()[0] +
+                    self.window.getmaxyx()[0], 0)
+                t.move_to_new_window(tw)
+                continue
+            t.do_command(ch)
+            pat = t.gather()
+            if not pat:
+                self._goto(initial)
+                break
+            pat = pat[1:].lower()
+            if not pat:
+                self._goto(initial)
+            found = False
+            for index, line in self.get_items(initial, initial - 1):
+                if line.lower().startswith(pat):
+                    found = True
+                    self._goto(index)
+                    break
+            if not found:
+                self._goto(initial)
+        try:
+            curses.curs_set(0)
+        except curses.error:
+            pass
+        self.search_mode = False
+        self.resize()
+        self.draw()
 
 

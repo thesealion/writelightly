@@ -4,7 +4,7 @@ import os
 import sys
 import conf
 from metadata import Metadata, format_date
-from scrollable_list import ScrollableList, handle_keypress
+from scrollable_list import ScrollableList
 from edit import edit_date
 from utils import get_all_months
 from screen import ScreenManager, RightWindowManager, ScreenError
@@ -60,7 +60,7 @@ def main(area_id=None, rwm=None):
                 rwm.set_title('Last entry:')
                 tag_info(sl.get_current_index())
         else:
-            handle_keypress(c, sl)
+            sl.handle_keypress(c)
             tag_info(sl.get_current_index())
     Metadata.write_all()
 
@@ -87,7 +87,7 @@ def show_date_list(tag, dates, area_id, rwm):
             metadata.load_day(date.day)
             rwm.show_text(metadata.text(date.day))
         else:
-            handle_keypress(c, sl)
+            sl.handle_keypress(c)
             date = dates[sl.get_current_index()]
             rwm.show_text(Metadata.get(date.year, date.month).text(date.day))
 

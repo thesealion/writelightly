@@ -207,7 +207,7 @@ class RightWindowManager(ScreenArea):
     def resize(self, y, x):
         self.window.resize(y, x)
         self._count_lines()
-    
+
     def draw(self):
         if not self.hidden:
             self._display()

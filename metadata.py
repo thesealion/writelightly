@@ -59,7 +59,8 @@ class Metadata(object):
                     if not line.strip():
                         continue
                     if line.startswith(conf.tags_label):
-                        tags += [b.strip() for b in line[conf.tags_label:].split(',')]
+                        tags += [b.strip() for b in
+                            line[len(conf.tags_label):].split(',')]
                         continue
                     lines += 1
                     words += len(line.split())
@@ -73,11 +74,12 @@ class Metadata(object):
 
     def _get_edits(self, day):
         date = datetime.date(self.year, self.month, day)
-        timestamps = get_edits(date)
-        data = [timestamps[0]] # creation time
-        if len(timestamps) > 1: # include last edit time and number of edits if any
-            data += [timestamps[-1], len(timestamps) - 1]
-        return data
+        edits = get_edits(date)
+        if edits:
+            data = [edits[0][0]] # creation time
+            if len(edits) > 1: # include last edit time and number of edits if any
+                data += [edits[-1][0], len(edits) - 1]
+            return data
 
     def _load_tags(self):
         self.tags = {}
@@ -111,7 +113,7 @@ class Metadata(object):
                     format_time(data['edits'][1]))
             except IndexError:
                 pass
-        except TypeError:
+        except (TypeError, KeyError):
             m = 'No entry for selected date'
             tags = edits = None
         output.append(m)

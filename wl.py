@@ -7,10 +7,11 @@ import sys
 import textwrap
 from calendar import Calendar, lastday
 from metadata import Metadata
-from utils import entry_exists, parse_date
+from utils import entry_exists, parse_date, format_time, format_size
 from screen import ScreenManager, RightWindowManager
 import tags
-from edit import edit_date
+from edit import edit_date, get_edits, edit_file, save_tmp_version, clean_tmp
+from scrollable_list import ScrollableList
 
 import locale
 locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
@@ -74,7 +75,33 @@ def main():
             rwm.set_title()
             d = cal.get_current_date()
             rwm.show_text(metadata.text(d.day))
+        elif c in (ord('d'),):
+            date = cal.get_current_date()
+            edits = get_edits(date)
+            if edits:
+                formatted = ['%s, created' % format_time(edits[0][0], full=True)]
+                formatted += ['%s, %s' % (format_time(ts, full=True),
+                    format_size(size)) for ts, size in edits[1:]]
+                sl = ScrollableList(formatted, area_id=rwm.area_id)
+                sl.draw()
+                while 1:
+                    c = sl.window.getch()
+                    if c == ord('q'):
+                        break
+                    if c == curses.KEY_RESIZE:
+                        ScreenManager.resize()
+                    if sl.hidden:
+                        continue
+                    elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
+                        index = sl.get_current_index()
+                        fn = save_tmp_version(date, edits, index)
+                        edit_file(fn)
+                    else:
+                        sl.handle_keypress(c)
+                ScreenManager.restore_area(sl.area_id)
+                rwm.show_text(metadata.text(date.day))
     Metadata.write_all()
+    clean_tmp()
 
 class InvalidDataDir(Exception):
     pass

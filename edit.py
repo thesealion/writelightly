@@ -11,13 +11,16 @@ DMP = diff_match_patch()
 class InvalidDataDir(Exception):
     pass
 
+def edit_file(path):
+    return subprocess.call('%s %s' % (conf.editor, path), shell=True)
+
 def edit_date(date):
     month_dir = os.path.join(conf.entries_dir, date.strftime('%Y-%m'))
     try:
         os.makedirs(month_dir)
     except OSError:
-        if not os.path.exists(month_dir) or not os.path.isdir(month_dir):
-            raise InvalidDataDir
+        if not os.path.isdir(month_dir):
+            raise InvalidDataDir(month_dir)
 
     fn = date.strftime('%d')
     path = os.path.join(month_dir, fn)
@@ -28,14 +31,14 @@ def edit_date(date):
     else:
         new = True
 
-    exit_code = subprocess.call('%s %s' % (conf.editor, path), shell=True)
+    exit_code = edit_file(path)
 
     diff_dir = os.path.join(conf.diffs_dir, date.strftime('%Y-%m'))
     try:
         os.makedirs(diff_dir)
     except OSError:
-        if not os.path.exists(diff_dir) or not os.path.isdir(diff_dir):
-            raise InvalidDataDir
+        if not os.path.isdir(diff_dir):
+            raise InvalidDataDir(diff_dir)
 
     diff_name = os.path.join(diff_dir, '%s_%d' % (fn, time.time()))
     if new:
@@ -62,8 +65,38 @@ def get_edits(date):
     try:
         ld = os.listdir(diff_dir)
     except OSError:
-        raise InvalidDataDir
+        raise InvalidDataDir(diff_dir)
     day = date.strftime('%d')
-    timestamps = [int(fn.split('_')[1]) for fn in ld if fn.startswith(day)]
-    return sorted(timestamps)
+    timestamps = [int(fn.split('_')[1]) for fn in ld if fn.startswith(day)
+        and not fn.endswith('.tmp')]
+    sizes = [os.path.getsize(os.path.join(diff_dir, '%s_%d' % (day, ts)))
+        for ts in timestamps]
+    return sorted(zip(timestamps, sizes))
+
+def save_tmp_version(date, edits, index):
+    diff_dir = os.path.join(conf.diffs_dir, date.strftime('%Y-%m'))
+    fn = date.strftime('%d')
+    tmp = os.path.join(diff_dir, '%s_%d.tmp' % (fn, edits[index][0]))
+    if os.path.exists(tmp):
+        return tmp
+    month_dir = os.path.join(conf.entries_dir, date.strftime('%Y-%m'))
+    path = os.path.join(month_dir, fn)
+    with open(path) as f:
+        text = f.read()
+    for ts, _ in sorted(edits[index + 1:], reverse=True):
+        diff_name = os.path.join(diff_dir, '%s_%d' % (fn, ts))
+        with open(diff_name) as f:
+            patches = DMP.patch_fromText(f.read())
+            text = DMP.patch_apply(patches, text)[0]
+    with open(tmp, 'w') as f:
+        f.write(text)
+    return tmp
+
+def clean_tmp(d=conf.diffs_dir):
+    for fn in os.listdir(d):
+        path = os.path.join(d, fn)
+        if os.path.isdir(path):
+            clean_tmp(path)
+        elif fn.endswith('.tmp'):
+            os.remove(path)
 

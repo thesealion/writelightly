@@ -82,12 +82,14 @@ def get_char(win):
     buf = ''.join([chr(b) for b in bytes])
     return buf
 
-def format_time(ts):
-    dt = datetime.datetime.fromtimestamp(int(ts))
+def format_time(ts, full=False):
+    dt = datetime.datetime.fromtimestamp(ts)
     today = datetime.date.today()
     fmt = ' '.join(filter(None, [
-        '%Y' if dt.year != today.year else '',
-        '%b %d' if (dt.month, dt.day) != (today.month, today.day) else '',
+        '%Y' if dt.year != today.year or full else '',
+        '%b %d' if (dt.month, dt.day) != (today.month, today.day)
+            or full else '',
         '%H:%M'
     ]))
     return dt.strftime(fmt)
+
