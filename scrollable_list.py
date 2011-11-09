@@ -47,6 +47,8 @@ class ScrollableList(ScreenArea):
         self.original = {}
         i = j = 0
         for line in lines:
+            if not line.strip():
+                raise ScrollableListError('Empty list items are not allowed')
             cl = []
             for l in textwrap.wrap(line, width):
                 self.lines.append((j, l))
@@ -277,10 +279,6 @@ class ScrollableList(ScreenArea):
                 self._goto(initial)
                 break
             if ch in (curses.KEY_ENTER, ord('\n')):
-                try:
-                    curses.curs_set(0)
-                except curses.error:
-                    pass
                 self.term = t.gather()[1:].lower()
                 break
             elif ch == curses.KEY_RESIZE:

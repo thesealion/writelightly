@@ -164,13 +164,13 @@ class ScreenArea(object):
 class ScreenError(Exception):
     pass
 
-class RightWindowManager(ScreenArea):
+class TextArea(ScreenArea):
     minx = 20
     lines = []
     es = []
 
     def __init__(self, title=None, *args, **kwargs):
-        super(RightWindowManager, self).__init__(*args, **kwargs)
+        super(TextArea, self).__init__(*args, **kwargs)
         y, x, y0, x0 = ScreenManager.get_coords(self.area_id)
         self.window = curses.newwin(y, x, y0, x0)
         self.content = None

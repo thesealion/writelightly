@@ -5,6 +5,7 @@ class Screen(object):
     def __init__(self, maxy, maxx):
         self.maxyx = (maxy, maxx)
         self.clear()
+        self.pos = (0, 0)
 
     def clear(self, *args):
         if not args:
@@ -25,6 +26,8 @@ class Screen(object):
         return self.maxyx
 
     def addstr(self, y, x, s, a=None):
+        if not s:
+            return
         line = self.lines[y]
         sl = slice(x, x + len(s))
         if len(line[sl]) != len(s):
@@ -41,6 +44,15 @@ class Screen(object):
     def getch(self):
         return commands.get()
 
+    def get_line(self, ind):
+        return ''.join(self.lines[ind]).strip()
+
+    def move(self, y, x):
+        self.pos = (y, x)
+
+    def getyx(self):
+        return self.pos
+
 class Window(Screen):
     def __init__(self, *args):
         if len(args) == 2:
@@ -53,6 +65,7 @@ class Window(Screen):
             raise CursesError('Bad arguments for newwin: %s' % args)
         self.maxyx = (y, x)
         self.begyx = (y0, x0)
+        self.pos = (0, 0)
 
     def getbegyx(self):
         return self.begyx
@@ -89,7 +102,7 @@ class CommandsManager(object):
         self.reset()
 
     def reset(self):
-        self.commands = [ord('q')]
+        self.commands = []
 
     def add(self, command):
         if isinstance(command, list):

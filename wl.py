@@ -8,7 +8,7 @@ import textwrap
 from calendar import Calendar, lastday
 from metadata import Metadata
 from utils import entry_exists, parse_date, format_time, format_size
-from screen import ScreenManager, RightWindowManager
+from screen import ScreenManager, TextArea
 import tags
 from edit import edit_date, get_edits, edit_file, save_tmp_version, clean_tmp
 from scrollable_list import ScrollableList
@@ -21,10 +21,10 @@ def main():
     year, month = today.year, today.month
     cal = Calendar(year, month, today.day, entry_exists)
     metadata = Metadata.get(year, month)
-    rwm = RightWindowManager()
+    text_area = TextArea()
     ScreenManager.draw_all()
     d = cal.get_current_date()
-    rwm.show_text(metadata.text(d.day))
+    text_area.show_text(metadata.text(d.day))
     while 1:
         c = cal.window.getch()
         if c == ord('q'):
@@ -43,7 +43,7 @@ def main():
                 cal.draw()
                 metadata = Metadata.get(year, month)
             d = cal.get_current_date()
-            rwm.show_text(metadata.text(d.day))
+            text_area.show_text(metadata.text(d.day))
         elif c in (ord('l'), curses.KEY_RIGHT):
             moved = cal.move_right()
             if not moved:
@@ -53,28 +53,28 @@ def main():
                 cal.draw()
                 metadata = Metadata.get(year, month)
             d = cal.get_current_date()
-            rwm.show_text(metadata.text(d.day))
+            text_area.show_text(metadata.text(d.day))
         elif c in (ord('j'), curses.KEY_DOWN):
             cal.move_down()
             d = cal.get_current_date()
-            rwm.show_text(metadata.text(d.day))
+            text_area.show_text(metadata.text(d.day))
         elif c in (ord('k'), curses.KEY_UP):
             cal.move_up()
             d = cal.get_current_date()
-            rwm.show_text(metadata.text(d.day))
+            text_area.show_text(metadata.text(d.day))
         elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
             date = cal.get_current_date()
             edit_date(date)
             metadata.load_day(date.day)
             cal.set_entry_exists_for_current_day(entry_exists(date))
-            rwm.show_text(metadata.text(date.day))
+            text_area.show_text(metadata.text(date.day))
         elif c in (ord('t'),):
-            tags.main(cal.area_id, rwm)
+            tags.main(cal.area_id, text_area)
             ScreenManager.restore_area(cal.area_id)
             cal.reinit()
-            rwm.set_title()
+            text_area.set_title()
             d = cal.get_current_date()
-            rwm.show_text(metadata.text(d.day))
+            text_area.show_text(metadata.text(d.day))
         elif c in (ord('d'),):
             date = cal.get_current_date()
             edits = get_edits(date)
@@ -82,7 +82,7 @@ def main():
                 formatted = ['%s, created' % format_time(edits[0][0], full=True)]
                 formatted += ['%s, %s' % (format_time(ts, full=True),
                     format_size(size)) for ts, size in edits[1:]]
-                sl = ScrollableList(formatted, area_id=rwm.area_id)
+                sl = ScrollableList(formatted, area_id=text_area.area_id)
                 sl.draw()
                 while 1:
                     c = sl.window.getch()
@@ -99,7 +99,7 @@ def main():
                     else:
                         sl.handle_keypress(c)
                 ScreenManager.restore_area(sl.area_id)
-                rwm.show_text(metadata.text(date.day))
+                text_area.show_text(metadata.text(date.day))
     Metadata.write_all()
     clean_tmp()
 
