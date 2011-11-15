@@ -89,9 +89,9 @@ class TestScrollableList(unittest.TestCase):
         y, x = screen.getmaxyx()
         lines = self._get_lines(300)
         lines1 = self._get_lines(3)
-        prefix = lines[random.randint(y, 300)][:3]
+        prefix = lines[random.randint(y, 299)][:3]
         for i in range(3):
-            lines.insert(random.randint(y, 300), prefix + lines1[i][3:])
+            lines.insert(random.randint(y, 299 + i), prefix + lines1[i][3:])
         indices = [ind for ind, line in enumerate(lines)
                 if line.startswith(prefix)]
         sl = ScrollableList(lines)
@@ -106,7 +106,8 @@ class TestScrollableList(unittest.TestCase):
             self.assertTrue(lines[index] in map(screen.get_line, range(y)))
             sl.handle_keypress(ord('n'))
         sl.move_to_bottom()
-        sl.handle_keypress(ord('N'))
+        if not screen.get_line(-1).startswith(prefix):
+            sl.handle_keypress(ord('N'))
         previous_index = itertools.cycle(reversed(indices)).next
         for i in range(10):
             index = previous_index()

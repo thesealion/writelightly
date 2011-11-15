@@ -17,11 +17,9 @@ class Metadata(object):
     @classmethod
     def get(cls, year, month):
         k = (year, month)
-        if k in cls.instances:
-            return cls.instances[k]
-        m = cls(year, month)
-        cls.instances[k] = m
-        return m
+        if k not in cls.instances:
+            cls.instances[k] = cls(year, month)
+        return cls.instances[k]
 
     @classmethod
     def write_all(cls):
