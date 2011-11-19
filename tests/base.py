@@ -3,8 +3,7 @@ import unittest
 
 class Screen(object):
     def __init__(self, maxy, maxx):
-        self.maxyx = (maxy, maxx)
-        self.clear()
+        self.setmaxyx(maxy, maxx)
         self.pos = (0, 0)
 
     def clear(self, *args):
@@ -16,7 +15,13 @@ class Screen(object):
         else:
             y, x, y0, x0 = args
             for i in range(y0, y0 + y):
-                line = self.lines[i]
+                try:
+                    line = self.lines[i]
+                except IndexError:
+                    # Following lines are out of range, no need to go over them.
+                    # We don't raise an exception here because it's not
+                    # an error in curses.
+                    break
                 line[x0:x0 + x] = [' '] * x
 
     def keypad(self, val):
@@ -52,6 +57,10 @@ class Screen(object):
 
     def getyx(self):
         return self.pos
+
+    def setmaxyx(self, maxy, maxx):
+        self.maxyx = (maxy, maxx)
+        self.clear()
 
 class Window(Screen):
     def __init__(self, *args):

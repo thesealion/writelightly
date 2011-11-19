@@ -19,7 +19,6 @@ class ScrollableList(ScreenArea):
         self.window.keypad(1)
         y, x = self.window.getmaxyx()
         self._calc_lines(lines)
-        self.last = len(self.lines) - 1
         self.heading = heading
         self.offset = len(heading.split('\n')) if heading else 0
         self.ysize = y - self.offset
@@ -58,6 +57,7 @@ class ScrollableList(ScreenArea):
             if len(cl) > 1:
                 self.original[j] = line
             j += 1
+        self.last = len(self.lines) - 1
 
     def draw(self):
         self.window.clear()
