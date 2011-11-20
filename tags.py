@@ -36,7 +36,8 @@ def main(area_id=None, text_area=None):
     if text_area:
         text_area.set_title('Last entry:')
     else:
-        text_area = TextArea('Last entry:')
+        text_area = TextArea()
+        text_area.set_title('Last entry:')
     ScreenManager.draw_all()
     def tag_info(index):
         tag, dates = items[index]

@@ -4,7 +4,8 @@ import unittest
 from writelightly.scrollable_list import ScrollableList
 from writelightly.screen import ScreenManager
 
-from writelightly.tests.base import patch_curses, get_screen, commands
+from writelightly.tests.base import (patch_curses, get_screen, commands,
+    get_random_lines)
 patch_curses()
 
 class TestScrollableList(unittest.TestCase):
@@ -13,30 +14,6 @@ class TestScrollableList(unittest.TestCase):
 
     def tearDown(self):
         ScreenManager.quit()
-
-    @staticmethod
-    def _get_lines(num=None, width=None):
-        def get_line():
-            line = ''
-            length = random.randint(1, width)
-            for j in range(length):
-                line += random.choice(letters)
-            return line
-
-        letters = [chr(c) for c in range(97, 123)] + [' ']
-        if not num or not width:
-            y, x = get_screen().getmaxyx()
-            if not num:
-                num = y + 50
-            if not width:
-                width = x - 1
-        lines = []
-        for i in range(num):
-            line = get_line()
-            while not line.strip():
-                line = get_line()
-            lines.append(line.strip())
-        return lines
 
     def _move_down_and_up(self, sl):
         sl.move_to_top()
@@ -75,7 +52,7 @@ class TestScrollableList(unittest.TestCase):
             self.assertEquals(ind(), item_id)
 
     def test_moving(self):
-        lines = self._get_lines()
+        lines = get_random_lines()
         sl = ScrollableList(lines)
         ScreenManager.draw_all()
 
@@ -106,7 +83,7 @@ class TestScrollableList(unittest.TestCase):
         self._move_down_and_up(sl)
 
     def test_scrolling(self):
-        lines = self._get_lines()
+        lines = get_random_lines()
         sl = ScrollableList(lines)
         ScreenManager.draw_all()
         screen = get_screen()
@@ -126,8 +103,8 @@ class TestScrollableList(unittest.TestCase):
     def test_search(self):
         screen = get_screen()
         y, x = screen.getmaxyx()
-        lines = self._get_lines(300)
-        lines1 = self._get_lines(3)
+        lines = get_random_lines(300)
+        lines1 = get_random_lines(3)
         prefix = lines[random.randint(y, 299)][:3]
         for i in range(3):
             lines.insert(random.randint(y, 299 + i), prefix + lines1[i][3:])
@@ -155,7 +132,7 @@ class TestScrollableList(unittest.TestCase):
             sl.handle_keypress(ord('N'))
 
     def test_resize(self):
-        lines = self._get_lines()
+        lines = get_random_lines()
         sl = ScrollableList(lines)
         ScreenManager.draw_all()
 

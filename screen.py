@@ -1,6 +1,5 @@
 import curses
 from metadata import Metadata
-from operator import add
 from textwrap import wrap
 from itertools import izip
 from abc import ABCMeta, abstractmethod
@@ -68,6 +67,13 @@ class ScreenManager(object):
         cls.areas[index] = area
 
     @classmethod
+    def get_last_window(cls, index):
+        try:
+            return cls.areas_stack[index][-1].window
+        except LookupError:
+            return None
+
+    @classmethod
     def restore_area(cls, index):
         cls.areas[index] = cls.areas_stack[index].pop()
 
@@ -125,8 +131,10 @@ class ScreenArea(object):
         if area_id is not None:
             ScreenManager.replace_area(area_id, self)
             self.area_id = area_id
+            self.window = ScreenManager.get_last_window(area_id)
         else:
             self.area_id = ScreenManager.add_area(self)
+            self.window = curses.newwin(*ScreenManager.get_coords(self.area_id))
 
     def show(self):
         self.hidden = False
@@ -169,44 +177,56 @@ class TextArea(ScreenArea):
     lines = []
     es = []
 
-    def __init__(self, title=None, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(TextArea, self).__init__(*args, **kwargs)
-        y, x, y0, x0 = ScreenManager.get_coords(self.area_id)
-        self.window = curses.newwin(y, x, y0, x0)
-        self.content = None
         self.hidden = False
-        self.set_title(title)
+        self.title = self.text = None
+        self.lines = {'title': [], 'text': []}
+
+    def _set(self, attr, text=None):
+        setattr(self, attr, text)
+        y, x = self.window.getmaxyx()
+        lines = self.lines.copy()
+        lines[attr] = self._get_lines(text, x) if text else []
+        if x >= self.minx and y >= sum(map(len, lines.values())):
+            self.lines.update(lines)
+            self.show()
+        else:
+            self.hide()
 
     def set_title(self, title=None):
-        y, x = self.window.getmaxyx()
-        self.title = wrap(title, x) if title else []
+        self._set('title', title)
+
+    def set_text(self, text):
+        self._set('text', text)
 
     def show_text(self, text):
-        self.content = text
-        self._count_lines()
+        self.set_text(text)
         self.draw()
 
-    def _count_lines(self):
-        y, x = self.window.getmaxyx()
-        wrapped = [wrap(line, x) for line in self.content.split('\n')]
-        self.lines = reduce(add, wrapped)
+    @staticmethod
+    def _get_lines(text, width):
+        from operator import add
+        return reduce(add, [wrap(line, width) for line in text.split('\n')])
 
     def enough_space(self, y, x):
-        return x >= self.minx and y >= len(self.lines) + len(self.title)
+        size = (len(self._get_lines(self.text, x)) +
+            len(self._get_lines(self.title, x)) if self.title else 0)
+        return x >= self.minx and y >= size
 
     def _display(self):
         self.window.clear()
-        if self.title:
-            for ind, line in enumerate(self.title):
-                self.window.addstr(ind, 0, line, curses.A_BOLD)
-        offset = len(self.title)
-        for ind, line in enumerate(self.lines):
+        for ind, line in enumerate(self.lines['title']):
+            self.window.addstr(ind, 0, line, curses.A_BOLD)
+        offset = len(self.lines['title'])
+        for ind, line in enumerate(self.lines['text']):
             self.window.addstr(ind + offset, 0, line)
         self.window.refresh()
 
     def resize(self, y, x):
         self.window.resize(y, x)
-        self._count_lines()
+        self.set_text(self.text)
+        self.set_title(self.title)
 
     def draw(self):
         if not self.hidden:

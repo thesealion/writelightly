@@ -1,4 +1,5 @@
 import curses
+import random
 import unittest
 
 class Screen(object):
@@ -141,3 +142,19 @@ def patch_curses():
     curses.keyname = lambda c: c
     curses.patched = True
 
+
+def get_random_lines(num=None, width=None):
+    letters = [chr(c) for c in range(97, 123)] + [' ']
+    if not num or not width:
+        y, x = get_screen().getmaxyx()
+        if not num:
+            num = y + 50
+        if not width:
+            width = x - 1
+
+    def get_line():
+        line = ''.join([random.choice(letters)
+            for j in range(random.randint(1, width))]).strip()
+        return line or get_line()
+
+    return [get_line() for i in range(num)]

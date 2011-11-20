@@ -15,7 +15,6 @@ class ScrollableList(ScreenArea):
 
     def __init__(self, lines, heading=None, *args, **kwargs):
         super(ScrollableList, self).__init__(*args, **kwargs)
-        self.window = curses.newwin(*ScreenManager.get_coords(self.area_id))
         self.window.keypad(1)
         y, x = self.window.getmaxyx()
         self._calc_lines(lines)
