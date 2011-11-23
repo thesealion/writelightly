@@ -2,6 +2,9 @@ import datetime
 import os
 import re
 
+class WLError(Exception):
+    pass
+
 def lastday(*args):
     if not args:
         raise TypeError('I need some arguments')

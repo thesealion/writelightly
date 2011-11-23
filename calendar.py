@@ -1,7 +1,8 @@
-import datetime
 import curses
-from utils import lastday
-from screen import ScreenManager, ScreenError, ScreenArea
+import datetime
+
+from writelightly.screen import ScreenManager, ScreenError, ScreenArea
+from writelightly.utils import lastday
 
 class Calendar(ScreenArea):
     minx = 20
@@ -9,7 +10,7 @@ class Calendar(ScreenArea):
     hidden = False
 
     def __init__(self, year, month, init_day=None,
-                 is_bold=lambda date: False, *args, **kwargs):
+                 is_active=lambda date: False, *args, **kwargs):
         super(Calendar, self).__init__(*args, **kwargs)
         self.window = curses.newwin(*ScreenManager.get_coords(self.area_id))
         self.window.keypad(1)
@@ -18,7 +19,6 @@ class Calendar(ScreenArea):
         if not init_day:
             init_day = datetime.date.today().day
         self.init_day = init_day
-        self.is_bold = is_bold
 
         first = datetime.date(self.year, self.month, 1)
         x, y = 0, 1
@@ -29,7 +29,7 @@ class Calendar(ScreenArea):
         data = []
         while day <= last:
             date = datetime.date(self.year, self.month, day)
-            week.append((x, y, self.is_bold(date), day))
+            week.append((x, y, is_active(date), day))
             if len(week) == 7:
                 data.append(week)
                 week = []
@@ -51,8 +51,8 @@ class Calendar(ScreenArea):
             for d_ind, day in enumerate(week):
                 if day is None:
                     continue
-                x, y, bold, d = day
-                attr = curses.A_BOLD if bold else 0
+                x, y, active, d = day
+                attr = curses.A_BOLD if active else 0
                 self.window.addstr(y, x, '%2d' % d, attr)
                 if d == init_day:
                     self.selected = (d_ind, w_ind)
@@ -61,8 +61,8 @@ class Calendar(ScreenArea):
     def _change(self, highlight):
         """Highlight or dehighlight the current selected date."""
         d_ind, w_ind = self.selected
-        x, y, bold, d = self.data[w_ind][d_ind]
-        attr = curses.A_BOLD if bold else 0
+        x, y, active, d = self.data[w_ind][d_ind]
+        attr = curses.A_BOLD if active else 0
         if highlight:
             attr += curses.A_REVERSE
         self.window.addstr(y, x, '%2d' % d, attr)
@@ -121,17 +121,17 @@ class Calendar(ScreenArea):
         if not self.selected:
             return None
         d_ind, w_ind = self.selected
-        x, y, bold, d = self.data[w_ind][d_ind]
+        x, y, active, d = self.data[w_ind][d_ind]
         return d
 
     def get_current_date(self):
         day = self.get_current_day()
         return datetime.date(self.year, self.month, day) if day else None
 
-    def set_entry_exists_for_current_day(self, ee):
+    def set_active(self, is_active):
         d_ind, w_ind = self.selected
         x, y, _, d = self.data[w_ind][d_ind]
-        self.data[w_ind][d_ind] = (x, y, ee, d)
+        self.data[w_ind][d_ind] = (x, y, is_active, d)
         self._change(True)
 
     def enough_space(self, y, x):

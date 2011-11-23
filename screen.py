@@ -1,8 +1,8 @@
 import curses
-from metadata import Metadata
-from textwrap import wrap
-from itertools import izip
+import sys
 from abc import ABCMeta, abstractmethod
+from itertools import izip
+from textwrap import wrap
 
 class ScreenManager(object):
     @classmethod
@@ -16,7 +16,6 @@ class ScreenManager(object):
         except curses.error:
             pass
         cls.screen = screen
-        cls.error = None
         cls.areas = []
         cls.areas_stack = {}
 
@@ -117,12 +116,6 @@ class ScreenManager(object):
         curses.echo()
         curses.curs_set(1)
         curses.endwin()
-        if cls.error:
-            print 'Error: %s' % cls.error
-
-    @classmethod
-    def show_error(cls, exc):
-        cls.error = exc.args[0]
 
 class ScreenArea(object):
     __metaclass__ = ABCMeta

@@ -1,9 +1,10 @@
 import datetime
-import yaml
 import os
-from utils import lastday, format_size, format_date, format_time
-import conf
-from edit import get_edits
+import yaml
+
+from writelightly import conf
+from writelightly.edit import get_edits
+from writelightly.utils import lastday, format_size, format_date, format_time
 
 class Metadata(object):
     instances = {}

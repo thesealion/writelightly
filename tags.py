@@ -3,16 +3,17 @@ import datetime
 import os
 import sys
 import conf
-from metadata import Metadata, format_date
-from scrollable_list import ScrollableList
-from edit import edit_date
-from utils import get_all_months
-from screen import ScreenManager, TextArea, ScreenError
+
+from writelightly.edit import edit_date
+from writelightly.metadata import Metadata, format_date
+from writelightly.screen import ScreenManager, TextArea, ScreenError
+from writelightly.scrollable_list import ScrollableList
+from writelightly.utils import get_all_months, WLError
 
 import locale
 locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
 
-def main(area_id=None, text_area=None):
+def show_tags(area_id=None, text_area=None):
     screen = ScreenManager.screen
     screen.addstr(0, 0, 'loading...')
     screen.refresh()
@@ -53,24 +54,25 @@ def main(area_id=None, text_area=None):
         if sl.hidden:
             continue
         elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
-            if not sl.hidden:
-                tag, dates = items[sl.get_current_index()]
-                show_date_list(tag, dates, sl.area_id, text_area)
-                ScreenManager.restore_area(sl.area_id)
-                sl.reinit()
-                text_area.set_title('Last entry:')
-                tag_info(sl.get_current_index())
+            tag, dates = items[sl.get_current_index()]
+            show_date_list(tag, dates, sl.area_id, text_area)
+            ScreenManager.restore_area(sl.area_id)
+            sl.reinit()
+            text_area.set_title('Last entry:')
+            tag_info(sl.get_current_index())
         else:
             sl.handle_keypress(c)
             tag_info(sl.get_current_index())
     Metadata.write_all()
 
-def show_date_list(tag, dates, area_id, text_area):
+def show_date_list(tag, dates, area_id=None, text_area=None):
     labels = map(format_date, dates)
     sl = ScrollableList(labels, tag, area_id=area_id)
     sl.draw()
     date = dates[sl.get_current_index()]
     metadata = Metadata.get(date.year, date.month)
+    if not text_area:
+        text_area = TextArea()
     text_area.set_title()
     text_area.show_text(metadata.text(date.day))
     while 1:
@@ -87,37 +89,30 @@ def show_date_list(tag, dates, area_id, text_area):
             sl.draw()
             metadata.load_day(date.day)
             text_area.show_text(metadata.text(date.day))
+        elif c in (ord('d'),):
+            date = dates[sl.get_current_index()]
+            from writelightly.edit import get_edits, show_edits
+            edits = get_edits(date)
+            if edits:
+                show_edits(date, edits, text_area.area_id)
+                ScreenManager.restore_area(text_area.area_id)
+                text_area.show_text(metadata.text(date.day))
         else:
             sl.handle_keypress(c)
             date = dates[sl.get_current_index()]
-            text_area.show_text(Metadata.get(date.year, date.month).text(date.day))
+            metadata = Metadata.get(date.year, date.month)
+            text_area.show_text(metadata.text(date.day))
+    Metadata.write_all()
 
-if __name__ == '__main__':
-    args = sys.argv[1:]
-    if args:
-        tag = args[0]
-        dates = []
-        for year, month in get_all_months(conf.data_dir):
-            m = Metadata.get(year, month)
-            if tag in m.tags:
-                for day in m.tags[tag]:
-                    dates.append(datetime.date(year, month, day))
-        if not dates:
-            print 'No entries for tag %s' % tag
-        else:
-            ScreenManager.init()
-            try:
-                show_date_list(tag, dates)
-            finally:
-                ScreenManager.quit()
+def show_tag(tag):
+    dates = []
+    for year, month in get_all_months(conf.data_dir):
+        m = Metadata.get(year, month)
+        if tag in m.tags:
+            for day in m.tags[tag]:
+                dates.append(datetime.date(year, month, day))
+    if not dates:
+        raise WLError('No entries for tag %s' % tag)
     else:
-        ScreenManager.init()
-        try:
-            main()
-        except ScreenError, exc:
-            ScreenManager.show_error(exc)
-        finally:
-            ScreenManager.quit()
-
-
+        show_date_list(tag, dates)
 

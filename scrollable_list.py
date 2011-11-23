@@ -1,11 +1,12 @@
 import curses
-from textinput import TextInput
 import curses.ascii
-import textwrap
-from utils import get_char
-from screen import ScreenManager, ScreenError, ScreenArea
+from textwrap import wrap
 
-class ScrollableListError(Exception):
+from writelightly.screen import ScreenManager, ScreenError, ScreenArea
+from writelightly.textinput import TextInput
+from writelightly.utils import get_char, WLError
+
+class ScrollableListError(WLError):
     pass
 
 class ScrollableList(ScreenArea):
@@ -48,7 +49,7 @@ class ScrollableList(ScreenArea):
             if not line.strip():
                 raise ScrollableListError('Empty list items are not allowed')
             cl = []
-            for l in textwrap.wrap(line, width):
+            for l in wrap(line, width):
                 self.lines.append((j, l))
                 cl.append(i)
                 i += 1

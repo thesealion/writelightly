@@ -1,14 +1,16 @@
 import os
-import tempfile
 import shutil
 import subprocess
+import tempfile
 import time
-import conf
+
+from writelightly import conf
+from writelightly.utils import WLError
 
 from diff_match_patch import diff_match_patch
 DMP = diff_match_patch()
 
-class InvalidDataDir(Exception):
+class InvalidDataDir(WLError):
     pass
 
 def edit_file(path):
@@ -100,3 +102,27 @@ def clean_tmp(d=conf.diffs_dir):
         elif fn.endswith('.tmp'):
             os.remove(path)
 
+def show_edits(date, edits, area_id):
+    from writelightly.screen import ScreenManager
+    from writelightly.utils import format_time, format_size
+    from writelightly.scrollable_list import ScrollableList
+    import curses
+    formatted = ['%s, created' % format_time(edits[0][0], full=True)]
+    formatted += ['%s, %s' % (format_time(ts, full=True),
+        format_size(size)) for ts, size in edits[1:]]
+    sl = ScrollableList(formatted, area_id=area_id)
+    sl.draw()
+    while 1:
+        c = sl.window.getch()
+        if c == ord('q'):
+            break
+        if c == curses.KEY_RESIZE:
+            ScreenManager.resize()
+        if sl.hidden:
+            continue
+        elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
+            index = sl.get_current_index()
+            fn = save_tmp_version(date, edits, index)
+            edit_file(fn)
+        else:
+            sl.handle_keypress(c)
