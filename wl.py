@@ -37,32 +37,23 @@ def show_calendar():
         if c in (ord('h'), curses.KEY_LEFT):
             moved = cal.move_left()
             if not moved:
-                year, month = (year if month != 1 else year - 1,
-                              month - 1 if month != 1 else 12)
-                cal = Calendar(year, month, lastday(year, month),
-                               entry_exists, cal.area_id)
+                cal = cal.get_previous_calendar()
                 cal.draw()
-                metadata = Metadata.get(year, month)
-            d = cal.get_current_date()
-            text_area.show_text(metadata.text(d.day))
+                metadata = Metadata.get(cal.year, cal.month)
+            text_area.show_text(metadata.text(cal.get_current_day()))
         elif c in (ord('l'), curses.KEY_RIGHT):
             moved = cal.move_right()
             if not moved:
-                year, month = (year if month != 12 else year + 1,
-                              month + 1 if month != 12 else 1)
-                cal = Calendar(year, month, 1, entry_exists, cal.area_id)
+                cal = cal.get_next_calendar()
                 cal.draw()
-                metadata = Metadata.get(year, month)
-            d = cal.get_current_date()
-            text_area.show_text(metadata.text(d.day))
+                metadata = Metadata.get(cal.year, cal.month)
+            text_area.show_text(metadata.text(cal.get_current_day()))
         elif c in (ord('j'), curses.KEY_DOWN):
             cal.move_down()
-            d = cal.get_current_date()
-            text_area.show_text(metadata.text(d.day))
+            text_area.show_text(metadata.text(cal.get_current_day()))
         elif c in (ord('k'), curses.KEY_UP):
             cal.move_up()
-            d = cal.get_current_date()
-            text_area.show_text(metadata.text(d.day))
+            text_area.show_text(metadata.text(cal.get_current_day()))
         elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
             date = cal.get_current_date()
             edit_date(date)
@@ -74,8 +65,7 @@ def show_calendar():
             ScreenManager.restore_area(cal.area_id)
             cal.reinit()
             text_area.set_title()
-            d = cal.get_current_date()
-            text_area.show_text(metadata.text(d.day))
+            text_area.show_text(metadata.text(cal.get_current_day()))
         elif c in (ord('d'),):
             date = cal.get_current_date()
             edits = get_edits(date)
@@ -83,6 +73,16 @@ def show_calendar():
                 show_edits(date, edits, text_area.area_id)
                 ScreenManager.restore_area(text_area.area_id)
                 text_area.show_text(metadata.text(date.day))
+        elif c in (ord('H'),):
+            cal = cal.get_previous_calendar(cal.get_current_day())
+            cal.draw()
+            metadata = Metadata.get(cal.year, cal.month)
+            text_area.show_text(metadata.text(cal.get_current_day()))
+        elif c in (ord('L'),):
+            cal = cal.get_next_calendar(cal.get_current_day())
+            cal.draw()
+            metadata = Metadata.get(cal.year, cal.month)
+            text_area.show_text(metadata.text(cal.get_current_day()))
     Metadata.write_all()
     clean_tmp()
 

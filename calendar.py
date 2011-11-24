@@ -16,9 +16,13 @@ class Calendar(ScreenArea):
         self.window.keypad(1)
         self.year, self.month = year, month
         self.selected = ()
+        last = lastday(year, month)
         if not init_day:
             init_day = datetime.date.today().day
+        if init_day > last:
+            init_day = last
         self.init_day = init_day
+        self.is_active = is_active
 
         first = datetime.date(self.year, self.month, 1)
         x, y = 0, 1
@@ -143,4 +147,15 @@ class Calendar(ScreenArea):
     def move(self, y0, x0):
         if self.window.getbegyx() != (y0, x0):
             self.window.mvwin(y0, x0)
+
+    def get_next_calendar(self, day=None):
+        year, month = (self.year if self.month != 12 else self.year + 1,
+                       self.month + 1 if self.month != 12 else 1)
+        return Calendar(year, month, day or 1, self.is_active, self.area_id)
+
+    def get_previous_calendar(self, day=None):
+        year, month = (self.year if self.month != 1 else self.year - 1,
+                       self.month - 1 if self.month != 1 else 12)
+        return Calendar(year, month, day or lastday(year, month),
+                        self.is_active, self.area_id)
 
