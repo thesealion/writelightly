@@ -64,8 +64,10 @@ class TestMetadata(unittest.TestCase):
             data = metadata.get_data_for_day(start.day)
             test = (self.assertNotEqual if start.day in should_fail
                 else self.assertEqual)
-            test(len(lines), data['lines'])
-            test(sum(len(line.split()) for line in lines), data['words'])
+
+            lines_from_data, words, tags, size, edits = data
+            test(len(lines), lines_from_data)
+            test(sum(len(line.split()) for line in lines), words)
             start += datetime.timedelta(days=1)
 
     def test_loading(self):

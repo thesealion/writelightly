@@ -24,6 +24,7 @@ def entry_exists(date):
     return data is not None
 
 def format_size(size):
+    size = int(size)
     if size > 1024:
         kib = size // 1024 + (size % 1024) / 1024.0
         return ('%.2f' % kib).rstrip('0').rstrip('.') + ' KiB'

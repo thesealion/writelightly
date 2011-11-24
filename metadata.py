@@ -66,9 +66,8 @@ class Metadata(object):
         except IOError:
             pass
         else:
-            self.data[day] = {'lines': lines, 'words': words, 'tags': tags,
-                              'size': format_size(os.path.getsize(path)),
-                              'edits': self._get_edits(day)}
+            self.data[day] = [lines, words, tags, int(os.path.getsize(path)),
+                              self._get_edits(day)]
             self._dirty = True
 
     def _get_edits(self, day):
@@ -83,7 +82,8 @@ class Metadata(object):
     def _load_tags(self):
         self.tags = {}
         for day, data in self.data.items():
-            for tag in data['tags']:
+            lines, words, tags, size, edits = data
+            for tag in tags:
                 try:
                     self.tags[tag].append(day)
                 except KeyError:
@@ -103,21 +103,24 @@ class Metadata(object):
     def text(self, day):
         data = self.get_data_for_day(day)
         output = [format_date(datetime.date(self.year, self.month, day))]
+        tags = edits_info = None
         try:
-            m = '%(lines)d lines, %(words)d words, %(size)s' % data
-            tags = ', '.join(data['tags'])
-            edits = 'Created: %s' % format_time(data['edits'][0])
-            try:
-                edits += ', edited %d times, last: %s' % (data['edits'][2],
-                    format_time(data['edits'][1]))
-            except IndexError:
-                pass
-        except (TypeError, KeyError):
+            lines, words, tags, size, edits = data
+        except TypeError:
             m = 'No entry for selected date'
-            tags = edits = None
+        else:
+            m = '%d lines, %d words, %s' % (lines, words, format_size(size))
+            tags = ', '.join(tags)
+            if edits:
+                edits_info = 'Created: %s' % format_time(edits[0])
+                try:
+                    edits_info += ', edited %d times, last: %s' % (edits[2],
+                        format_time(edits[1]))
+                except IndexError:
+                    pass
         output.append(m)
         if tags:
             output.append('Tags: %s' % tags)
-        if edits:
-            output.append(edits)
+        if edits_info:
+            output.append(edits_info)
         return '\n'.join(output)
