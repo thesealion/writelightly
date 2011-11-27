@@ -3,9 +3,17 @@ import os
 import re
 
 class WLError(Exception):
-    pass
+    """Base class for all Writelightly exceptions."""
 
 def lastday(*args):
+    """Return the last day of the given month.
+
+    Takes datetime.date or year and month, returns an integer.
+    >>> lastday(2011, 11)
+    30
+    >>> lastday(datetime.date(2011, 2, 1))
+    28
+    """
     if not args:
         raise TypeError('I need some arguments')
     if len(args) == 1 and type(args[0]) is datetime.date:
@@ -19,11 +27,13 @@ def lastday(*args):
     return (next_first - datetime.timedelta(days=1)).day
 
 def entry_exists(date):
+    """Check if an entry for the given date exists."""
     from metadata import Metadata
     data = Metadata.get(date.year, date.month).get_data_for_day(date.day)
     return data is not None
 
 def format_size(size):
+    """Format a size of a file in bytes to be human-readable."""
     size = int(size)
     if size > 1024:
         kib = size // 1024 + (size % 1024) / 1024.0
@@ -34,6 +44,9 @@ def format_date(date):
     return '%s %d, %d' % (date.strftime('%B'), date.day, date.year)
 
 def get_all_months(data_dir):
+    """
+    Return a sorted list of (year, month) tuples for months that have entries.
+    """
     entries_dir = os.path.join(data_dir, 'entries')
     entries = os.listdir(entries_dir)
 
@@ -44,6 +57,7 @@ def get_all_months(data_dir):
     return sorted(sorted(list(months), key=lambda i: i[1]), key=lambda i: i[0])
 
 def parse_date(date):
+    """Try to recognize a date using several formats."""
     if date == 'today':
         return datetime.date.today()
     if date == 'yesterday':
@@ -58,6 +72,12 @@ def parse_date(date):
     return None
 
 def get_char(win):
+    """Use win.getch() to get a character even if it's multibyte.
+
+    A magic function that I found somewhere on the Internet. But it works
+    well, at least for Russian characters in a UTF-8-based shell.
+    Needs testing.
+    """
     def get_check_next_byte():
         c = win.getch()
         if 128 <= c <= 191:
@@ -87,6 +107,7 @@ def get_char(win):
     return buf
 
 def format_time(ts, full=False):
+    """Format a timestamp relatively to the current time."""
     dt = datetime.datetime.fromtimestamp(ts)
     today = datetime.date.today()
     fmt = ' '.join(filter(None, [

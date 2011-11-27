@@ -7,8 +7,15 @@ from textwrap import wrap
 from writelightly.conf import Config
 
 class ScreenManager(object):
+    """Class that manages areas on screen, their contents and sizes.
+
+    Also it initializes and deinitializes the screen and deals with
+    screen resizing.
+    """
+
     @classmethod
     def init(cls):
+        """Initialize screen."""
         screen = curses.initscr()
         curses.noecho()
         curses.cbreak()
@@ -25,6 +32,14 @@ class ScreenManager(object):
 
     @classmethod
     def _calc(cls, exclude=[]):
+        """
+        Calculate sizes and coordinates for all existing areas.
+
+        exclude: list of area indices to exclude from calculation.
+
+        Right now this method just divides available screen in
+        equally-sized columns.
+        """
         y, x = cls.screen.getmaxyx()
         areas = list(cls.areas)
         for index in exclude:
@@ -53,6 +68,7 @@ class ScreenManager(object):
 
     @classmethod
     def add_area(cls, area):
+        """Add a new area and return its index."""
         cls.areas.append(area)
         cls._calc()
         for index, area in enumerate(cls.areas[:-1]):
@@ -62,6 +78,10 @@ class ScreenManager(object):
 
     @classmethod
     def replace_area(cls, index, area):
+        """Replace an area with a new one.
+
+        And save the old area so it can be restored later.
+        """
         old_area = cls.areas[index]
         try:
             cls.areas_stack[index].append(old_area)
@@ -71,6 +91,13 @@ class ScreenManager(object):
 
     @classmethod
     def get_last_window(cls, index):
+        """Get window of the last area with the given index.
+
+        Each area is an instance of ScreenArea and has a "window" attribute.
+        When an area is replaced with another one, we use this method to get
+        the window object of the previous area because it's unnecessary to 
+        create a new window in this case.
+        """
         try:
             return cls.areas_stack[index][-1].window
         except LookupError:
@@ -78,20 +105,29 @@ class ScreenManager(object):
 
     @classmethod
     def restore_area(cls, index):
+        """Restore an area with given index."""
         cls.areas[index] = cls.areas_stack[index].pop()
 
     @classmethod
     def get_coords(cls, index):
+        """Get coordinates (y, x, y0, x0) for an area with given index."""
         return cls.coords[index]
 
     @classmethod
     def draw_all(cls):
+        """Draw all not hidden areas."""
         for area in cls.areas:
             if not area.hidden:
                 area.draw()
 
     @classmethod
     def resize(cls):
+        """Handle screen resizing.
+
+        Calculate size for each area, then ask each area if the new size is
+        enough for it. If not, hide that area and start from the beginning.
+        Finally, draw all areas.
+        """
         exclude = []
         while 1:
             repeat = False
@@ -115,6 +151,7 @@ class ScreenManager(object):
 
     @classmethod
     def quit(cls):
+        """Deinitialize screen."""
         curses.nocbreak()
         cls.screen.keypad(0)
         curses.echo()
@@ -122,9 +159,15 @@ class ScreenManager(object):
         curses.endwin()
 
 class ScreenArea(object):
+    """Abstract class representing an area on the screen. Base for all areas.
+    """
     __metaclass__ = ABCMeta
 
     def __init__(self, area_id=None):
+        """Add this area to ScreenManager or replace an existing one.
+
+        This method should be called via super() from subclasses.
+        """
         if area_id is not None:
             ScreenManager.replace_area(area_id, self)
             self.area_id = area_id
@@ -134,18 +177,25 @@ class ScreenArea(object):
             self.window = curses.newwin(*ScreenManager.get_coords(self.area_id))
 
     def show(self):
+        """Show this area. Used when the area was hidden earlier."""
         self.hidden = False
 
     def move(self, y0, x0):
+        """Move to the given coordinates."""
         if self.window.getbegyx() != (y0, x0):
             self.window.mvwin(y0, x0)
 
     def hide(self):
+        """Hide this area. Used when there isn't enough space."""
         self.hidden = True
         self.window.clear()
         self.window.refresh()
 
     def reinit(self):
+        """Resync this area with ScreenManager.
+
+        Used when an area was replaced and then restored.
+        """
         y, x, y0, x0 = ScreenManager.get_coords(self.area_id)
         if self.enough_space(y, x):
             self.resize(y, x)
@@ -156,31 +206,32 @@ class ScreenArea(object):
 
     @abstractmethod
     def resize(self, y, x):
-        pass
+        """Resize this area to fit new dimensions."""
 
     @abstractmethod
     def enough_space(self, y, x):
-        pass
+        """Check if this area can be resized to the given dimensions."""
 
     @abstractmethod
     def draw(self):
-        pass
-
-class ScreenError(Exception):
-    pass
+        """Display this area on screen."""
 
 class TextArea(ScreenArea):
+    """Simple screen area that just displays some text."""
     minx = 20
     lines = []
     es = []
 
     def __init__(self, *args, **kwargs):
+        # title, text: raw title and text
+        # lines: wrapped title and text
         super(TextArea, self).__init__(*args, **kwargs)
         self.hidden = False
         self.title = self.text = None
         self.lines = {'title': [], 'text': []}
 
     def _set(self, attr, text=None):
+        """Set title or text, recalculate lines."""
         setattr(self, attr, text)
         y, x = self.window.getmaxyx()
         lines = self.lines.copy()
@@ -203,6 +254,7 @@ class TextArea(ScreenArea):
 
     @staticmethod
     def _get_lines(text, width):
+        """Wrap text preserving existing linebreaks."""
         from operator import add
         return reduce(add, [wrap(line, width) for line in text.split('\n')])
 
@@ -212,6 +264,7 @@ class TextArea(ScreenArea):
         return x >= self.minx and y >= size
 
     def _display(self):
+        """Display lines on screen."""
         self.window.clear()
         for ind, line in enumerate(self.lines['title']):
             self.window.addstr(ind, 0, line, curses.A_BOLD)

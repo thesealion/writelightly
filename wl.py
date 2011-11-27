@@ -19,6 +19,11 @@ import locale
 locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
 
 def show_calendar():
+    """Show an interactive calendar.
+
+    Show the calendar on the left side of the screen and some metadata about
+    the selected date on the right. Any entry can be edited in external editor.
+    """
     today = datetime.date.today()
     year, month = today.year, today.month
     cal = Calendar(year, month, today.day, entry_exists)
@@ -93,10 +98,8 @@ def show_calendar():
     Metadata.write_all()
     clean_tmp()
 
-class InvalidDataDir(WLError):
-    pass
-
 def edit_single_date(date):
+    """Edit a single entry in external editor without initializing screen."""
     date = parse_date(date)
     if not date:
         raise WLError('Unrecognised date format\n')

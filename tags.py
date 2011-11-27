@@ -6,7 +6,7 @@ import sys
 from writelightly.conf import Config
 from writelightly.edit import edit_date, get_edits, show_edits
 from writelightly.metadata import Metadata, format_date
-from writelightly.screen import ScreenManager, TextArea, ScreenError
+from writelightly.screen import ScreenManager, TextArea
 from writelightly.scrollable_list import ScrollableList
 from writelightly.utils import get_all_months, WLError
 
@@ -16,6 +16,7 @@ import locale
 locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
 
 def show_tags(area_id=None, text_area=None):
+    """Show all tags sorted by entries number as a scrollable list."""
     screen = ScreenManager.screen
     screen.addstr(0, 0, 'loading...')
     screen.refresh()
@@ -73,6 +74,7 @@ def show_tags(area_id=None, text_area=None):
     Metadata.write_all()
 
 def show_date_list(tag, dates, area_id=None, text_area=None):
+    """Show the list of entries for a tag."""
     labels = map(format_date, dates)
     sl = ScrollableList(labels, tag, area_id=area_id)
     sl.draw()
@@ -114,6 +116,7 @@ def show_date_list(tag, dates, area_id=None, text_area=None):
     Metadata.write_all()
 
 def show_tag(tag):
+    """Find all entries for a tag and call show_date_list."""
     dates = []
     for year, month in get_all_months(conf['data_dir']):
         m = Metadata.get(year, month)

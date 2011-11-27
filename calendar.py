@@ -1,16 +1,28 @@
 import curses
 import datetime
 
-from writelightly.screen import ScreenManager, ScreenError, ScreenArea
+from writelightly.screen import ScreenManager, ScreenArea
 from writelightly.utils import lastday
 
 class Calendar(ScreenArea):
+    """Class representing a calendar for one month.
+
+    It displays it on screen in a format similar to the Unix "cal" command
+    but with the ability to interactively select a date.
+    Some dates can be "active" (displayed empasized).
+    """
     minx = 20
     miny = 10
     hidden = False
 
     def __init__(self, year, month, init_day=None,
                  is_active=lambda date: False, *args, **kwargs):
+        """Initialize calendar by year and month.
+
+        init_day: day of the month that is initially selected
+        is_active: function that takes a datetime.date instance and
+                   returns True if that date is "active"
+        """
         super(Calendar, self).__init__(*args, **kwargs)
         self.window = curses.newwin(*ScreenManager.get_coords(self.area_id))
         self.window.keypad(1)
@@ -48,6 +60,7 @@ class Calendar(ScreenArea):
         self.miny = len(self.data) + 1
 
     def draw(self):
+        """Display calendar on screen."""
         self.window.clear()
         self.window.addstr(0, 0, 'Mo Tu We Th Fr Sa Su')
         init_day = self.get_current_day() or self.init_day
@@ -82,6 +95,11 @@ class Calendar(ScreenArea):
         return False
 
     def move_left(self):
+        """Move selection one step to the left.
+
+        Do nothing and return False if the move is impossible
+        (the current day is the first day of the month).
+        """
         d_ind, w_ind = self.selected
         if d_ind == 0:
             if w_ind != 0 and self.data[w_ind-1][6] is not None:
@@ -93,6 +111,11 @@ class Calendar(ScreenArea):
         return self._move(d_ind, w_ind)
 
     def move_right(self):
+        """Move selection one step to the right.
+
+        Do nothing and return False if the move is impossible
+        (the current day is the last day of the month).
+        """
         d_ind, w_ind = self.selected
         if d_ind == 6:
             if w_ind != len(self.data) - 1 and self.data[w_ind+1][0] is not None:
@@ -104,6 +127,10 @@ class Calendar(ScreenArea):
         return self._move(d_ind, w_ind)
 
     def move_up(self):
+        """Move selection one step up.
+
+        Go to the bottom row if we're on the top one.
+        """
         d_ind, w_ind = self.selected
         if w_ind != 0 and self.data[w_ind-1][d_ind] is not None:
             w_ind -= 1
@@ -114,6 +141,10 @@ class Calendar(ScreenArea):
         return self._move(d_ind, w_ind)
 
     def move_down(self):
+        """Move selection one step down.
+
+        Go to the top row if we're on the bottom one.
+        """
         d_ind, w_ind = self.selected
         if w_ind != len(self.data) - 1 and self.data[w_ind+1][d_ind] is not None:
             w_ind += 1
@@ -122,6 +153,7 @@ class Calendar(ScreenArea):
         return self._move(d_ind, w_ind)
 
     def get_current_day(self):
+        """Return the current selected day of month as an integer."""
         if not self.selected:
             return None
         d_ind, w_ind = self.selected
@@ -129,10 +161,12 @@ class Calendar(ScreenArea):
         return d
 
     def get_current_date(self):
+        """Return the current selected date as a datetime.date instance."""
         day = self.get_current_day()
         return datetime.date(self.year, self.month, day) if day else None
 
     def set_active(self, is_active):
+        """Change "active" attribute of the current date."""
         d_ind, w_ind = self.selected
         x, y, _, d = self.data[w_ind][d_ind]
         self.data[w_ind][d_ind] = (x, y, is_active, d)
@@ -149,11 +183,13 @@ class Calendar(ScreenArea):
             self.window.mvwin(y0, x0)
 
     def get_next_calendar(self, day=None):
+        """Return a Calendar instance representing the next month."""
         year, month = (self.year if self.month != 12 else self.year + 1,
                        self.month + 1 if self.month != 12 else 1)
         return Calendar(year, month, day or 1, self.is_active, self.area_id)
 
     def get_previous_calendar(self, day=None):
+        """Return a Calendar instance representing the previous month."""
         year, month = (self.year if self.month != 1 else self.year - 1,
                        self.month - 1 if self.month != 1 else 12)
         return Calendar(year, month, day or lastday(year, month),

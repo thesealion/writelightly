@@ -13,18 +13,29 @@ DMP = diff_match_patch()
 conf = Config.general
 
 class InvalidDataDir(WLError):
-    pass
+    """Raised when a data directory exists as a file."""
+    def __init__(self, path):
+        message = 'Invalid data directory: %s' % path
+        super(InvalidDataDir, self).__init__(message)
 
 def edit_file(path):
+    """Call up an external editor specified in config to edit a file."""
     return subprocess.call('%s %s' % (conf['editor'], path), shell=True)
 
 def edit_date(date):
+    """Edit the entry for the given date.
+
+    If the entry exists, back it up to a temporary file, let user edit it,
+    then store a reverse diff between versions.
+    """
     month_dir = os.path.join(conf['entries_dir'], date.strftime('%Y-%m'))
-    try:
-        os.makedirs(month_dir)
-    except OSError:
-        if not os.path.isdir(month_dir):
-            raise InvalidDataDir(month_dir)
+    diff_dir = os.path.join(conf['diffs_dir'], date.strftime('%Y-%m'))
+    for path in (month_dir, diff_dir):
+        try:
+            os.makedirs(path)
+        except OSError:
+            if not os.path.isdir(path):
+                raise InvalidDataDir(path)
 
     fn = date.strftime('%d')
     path = os.path.join(month_dir, fn)
@@ -36,13 +47,6 @@ def edit_date(date):
         new = True
 
     exit_code = edit_file(path)
-
-    diff_dir = os.path.join(conf['diffs_dir'], date.strftime('%Y-%m'))
-    try:
-        os.makedirs(diff_dir)
-    except OSError:
-        if not os.path.isdir(diff_dir):
-            raise InvalidDataDir(diff_dir)
 
     diff_name = os.path.join(diff_dir, '%s_%d' % (fn, time.time()))
     if new:
@@ -59,12 +63,14 @@ def edit_date(date):
         os.remove(tmp)
 
 def get_diff(one, two):
+    """Get diff between two texts as a string using diff_match_patch"""
     diffs = DMP.diff_main(one, two)
     DMP.diff_cleanupSemantic(diffs)
     patches = DMP.patch_make(one, diffs)
     return DMP.patch_toText(patches)
 
 def get_edits(date):
+    """Get a list of diffs for the given date along with their sizes."""
     diff_dir = os.path.join(conf['diffs_dir'], date.strftime('%Y-%m'))
     try:
         ld = os.listdir(diff_dir)
@@ -78,6 +84,11 @@ def get_edits(date):
     return sorted(zip(timestamps, sizes))
 
 def save_tmp_version(date, edits, index):
+    """Get an old version of an entry.
+
+    Given a date, list of edits as returned by get_edits, and an index,
+    apply needed diffs, save the result to a file and return its name.
+    """
     diff_dir = os.path.join(conf['diffs_dir'], date.strftime('%Y-%m'))
     fn = date.strftime('%d')
     tmp = os.path.join(diff_dir, '%s_%d.tmp' % (fn, edits[index][0]))
@@ -97,6 +108,7 @@ def save_tmp_version(date, edits, index):
     return tmp
 
 def clean_tmp(d=conf['diffs_dir']):
+    """Delete all temporary files from a directory."""
     for fn in os.listdir(d):
         path = os.path.join(d, fn)
         if os.path.isdir(path):
@@ -105,6 +117,7 @@ def clean_tmp(d=conf['diffs_dir']):
             os.remove(path)
 
 def show_edits(date, edits, area_id):
+    """Show all edits of an entry as a scrollable list."""
     from writelightly.screen import ScreenManager
     from writelightly.utils import format_time, format_size
     from writelightly.scrollable_list import ScrollableList

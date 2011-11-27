@@ -3,7 +3,7 @@ import curses.ascii
 from textwrap import wrap
 
 from writelightly.conf import Config
-from writelightly.screen import ScreenManager, ScreenError, ScreenArea
+from writelightly.screen import ScreenManager, ScreenArea
 from writelightly.textinput import TextInput
 from writelightly.utils import get_char, WLError
 
@@ -11,11 +11,14 @@ class ScrollableListError(WLError):
     pass
 
 class ScrollableList(ScreenArea):
+    """List of text items displayed on screen with ability to scroll them."""
+
     minx = 10
     miny = 3
     hidden = False
 
     def __init__(self, lines, heading=None, *args, **kwargs):
+        """Initialize from a list of lines and an optional heading."""
         super(ScrollableList, self).__init__(*args, **kwargs)
         self.window.keypad(1)
         y, x = self.window.getmaxyx()
@@ -23,15 +26,29 @@ class ScrollableList(ScreenArea):
         self.heading = heading
         self.offset = len(heading.split('\n')) if heading else 0
         self.ysize = y - self.offset
-        self.top = 0
-        self.bottom = len(self.lines[:self.ysize]) - 1
-        self.itop = 0
-        self.ibottom = self.lines[self.bottom][0]
-        self.current = self.itop
+        self.top = 0                                   # index of the top
+                                                       # screen line
+
+        self.bottom = len(self.lines[:self.ysize]) - 1 # index of the bottom
+                                                       # screen line
+
+        self.itop = 0                              # index of the top item
+        self.ibottom = self.lines[self.bottom][0]  # index of the bottom item
+        self.current = self.itop                   # index of the current item
         self.term = None
         self.search_mode = False
 
     def _calc_lines(self, lines=None, width=None):
+        """Wrap raw lines to fit area width.
+
+        Sets attributes:
+        - lines: screen lines. An original line can be broken into several
+          screen lines.
+        - items: items that correspond to original lines. Each of them is a
+          list of screen line indices.
+        - original: original lines for items that consist of more than one
+          screen line, stored by item index.
+        """
         if lines is None:
             if not self.lines:
                 raise ScrollableListError('no lines to recalc')
@@ -70,6 +87,7 @@ class ScrollableList(ScreenArea):
         self._change()
 
     def _change(self, highlight=True):
+        """Highlight or dehighlight the current selected item."""
         attr = curses.A_REVERSE if highlight else 0
         for line_id in self.items[self.current]:
             if self.top <= line_id <= self.bottom:
@@ -78,6 +96,11 @@ class ScrollableList(ScreenArea):
         self.window.refresh()
 
     def _scroll(self, lines):
+        """Scroll the list given number of screen lines down.
+
+        If "lines" is negative, scroll up.
+        Low-level function, will break if "lines" is too big.
+        """
         self.top += lines
         self.bottom += lines
         self.itop = self.lines[self.top][0]
@@ -87,6 +110,7 @@ class ScrollableList(ScreenArea):
         self.draw()
 
     def _goto(self, index):
+        """Make the item with the given index selected, scroll if needed."""
         self._change(False)
         self.current = index
         lines = self.items[index]
@@ -99,6 +123,7 @@ class ScrollableList(ScreenArea):
             self._change()
 
     def move_down(self):
+        """Move selection to the next item."""
         if self.current < self.ibottom:
             self._change(False)
             self.current += 1
@@ -113,6 +138,7 @@ class ScrollableList(ScreenArea):
             self._scroll(last_line_id - self.bottom)
 
     def move_up(self):
+        """Move selection to the previous item."""
         if self.current > self.itop:
             self._change(False)
             self.current -= 1
@@ -127,6 +153,7 @@ class ScrollableList(ScreenArea):
             self._scroll(first_line_id - self.top)
 
     def scroll_down(self, lines=1):
+        """Scroll one line down."""
         if self.bottom < self.last:
             dif = self.last - self.bottom
             if lines > dif:
@@ -134,30 +161,38 @@ class ScrollableList(ScreenArea):
             self._scroll(lines)
 
     def scroll_up(self, lines=1):
+        """Scroll one line up."""
         if self.top > 0:
             if lines > self.top:
                 lines = self.top
             self._scroll(-lines)
 
     def scroll_screen_down(self):
+        """Scroll one screen down."""
         self.scroll_down(self.ysize)
 
     def scroll_halfscreen_down(self):
+        """Scroll half a screen down."""
         self.scroll_down(self.ysize // 2)
 
     def scroll_screen_up(self):
+        """Scroll one screen up."""
         self.scroll_up(self.ysize)
 
     def scroll_halfscreen_up(self):
+        """Scroll half a screen up."""
         self.scroll_up(self.ysize // 2)
 
     def move_to_top(self):
+        """Scroll to top and make the first item selected."""
         self._goto(0)
 
     def move_to_bottom(self):
+        """Scroll to bottom and make the last item selected."""
         self._goto(len(self.items) - 1)
 
     def get_current_index(self):
+        """Return the index of the current selected item."""
         return self.current
 
     def enough_space(self, y, x):
@@ -191,6 +226,9 @@ class ScrollableList(ScreenArea):
             self.current = self.ibottom
 
     def get_items(self, start, stop, reverse=False):
+        """
+        Get an iterator cycling through original lines from "start" to "stop".
+        """
         step = 1 if not reverse else -1
         last = len(self.items) - 1
         if stop < 0:
@@ -220,6 +258,11 @@ class ScrollableList(ScreenArea):
                 start = last
 
     def handle_keypress(self, kn):
+        """React to a keyboard command, if applicable.
+
+        Given the output of curses.keyname, find it in config for list keys
+        and perform the appropriate action.
+        """
         keys = Config.list_keys
         if kn in keys['down']:
             self.move_down()
@@ -250,7 +293,6 @@ class ScrollableList(ScreenArea):
             else:
                 params = (b, a, True)
             for index, line in self.get_items(*params):
-                #if line.lower().startswith(self.term):
                 if self.term in line.lower():
                     self._goto(index)
                     break
@@ -258,6 +300,7 @@ class ScrollableList(ScreenArea):
             self.handle_search()
 
     def handle_search(self):
+        """Let user search through items of the list."""
         self.search_mode = True
         self.resize()
 
@@ -300,7 +343,6 @@ class ScrollableList(ScreenArea):
                 self._goto(initial)
             found = False
             for index, line in self.get_items(initial, initial - 1):
-                #if line.lower().startswith(pat):
                 if pat in line.lower():
                     found = True
                     self._goto(index)

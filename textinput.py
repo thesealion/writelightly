@@ -2,7 +2,16 @@ import curses
 import curses.ascii
 
 class TextInput(object):
+    """Replacement for curses.textpad that works much better.
+
+    Supports the same interface (do_command and gather), but instead of
+    manipulating characters on screen, it keeps them in memory as a string.
+    Text input field can have a prefix which looks like a shell prompt and
+    can't be modified when editing the value in the field.
+    """
+
     def __init__(self, window, prefix=''):
+        """Create a text input on the given window."""
         self.win = window
         window.keypad(1)
         self.prefix = prefix
@@ -12,6 +21,10 @@ class TextInput(object):
         self.update()
 
     def do_command(self, ch):
+        """Handle a keyboard command.
+
+        Supports multibyte characters (but it hasn't been really tested).
+        """
         if type(ch) is str and len(ch) > 1:
             if self.pos < self.maxx:
                 self.value.insert(self.pos, ch)
@@ -47,15 +60,21 @@ class TextInput(object):
         self.update()
 
     def update(self):
+        """Synchronize the current value with the screen."""
         self.win.clear()
         self.win.addstr(0, 0, self.gather())
         self.win.refresh()
         self.win.move(self.win.getyx()[0], self.pos)
 
     def gather(self):
+        """Get the current value."""
         return ''.join(self.value)
 
     def move_to_new_window(self, window):
+        """Draw text input field on another window.
+
+        Used when the old window is no longer visible after a resize.
+        """
         self.win = window
         window.keypad(1)
         self.update()
