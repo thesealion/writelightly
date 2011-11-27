@@ -13,7 +13,7 @@ from writelightly.screen import ScreenManager, TextArea
 from writelightly.scrollable_list import ScrollableList
 from writelightly.tags import show_tags, show_tag
 from writelightly.utils import (entry_exists, parse_date, format_time,
-        format_size, WLError)
+        format_size, WLError, WLQuit)
 
 import locale
 locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
@@ -40,7 +40,9 @@ def show_calendar():
             break
         except ValueError:
             continue
-        if kn == 'q':
+        if kn in Config.general_keys['quit']:
+            raise WLQuit
+        if kn in Config.general_keys['quit_mode']:
             break
         if kn == 'KEY_RESIZE':
             ScreenManager.resize()
@@ -120,6 +122,8 @@ def wrapper(func, with_screen=False):
     error = None
     try:
         func()
+    except WLQuit:
+        pass
     except WLError as exc:
         error = exc
     finally:

@@ -8,7 +8,7 @@ from writelightly.edit import edit_date, get_edits, show_edits
 from writelightly.metadata import Metadata, format_date
 from writelightly.screen import ScreenManager, TextArea
 from writelightly.scrollable_list import ScrollableList
-from writelightly.utils import get_all_months, WLError
+from writelightly.utils import get_all_months, WLError, WLQuit
 
 conf = Config.general
 
@@ -55,7 +55,9 @@ def show_tags(area_id=None, text_area=None):
             break
         except ValueError:
             continue
-        if kn == 'q':
+        if kn in Config.general_keys['quit']:
+            raise WLQuit
+        if kn in Config.general_keys['quit_mode']:
             break
         if kn == 'KEY_RESIZE':
             ScreenManager.resize()
@@ -89,7 +91,9 @@ def show_date_list(tag, dates, area_id=None, text_area=None):
             kn = curses.keyname(sl.window.getch())
         except KeyboardInterrupt:
             break
-        if kn in ('^O', 'q'):
+        if kn in Config.general_keys['quit']:
+            raise WLQuit
+        if kn in Config.general_keys['quit_mode']:
             break
         if kn == 'KEY_RESIZE':
             ScreenManager.resize()

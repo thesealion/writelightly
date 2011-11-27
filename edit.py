@@ -5,7 +5,7 @@ import tempfile
 import time
 
 from writelightly.conf import Config
-from writelightly.utils import WLError
+from writelightly.utils import WLError, WLQuit
 
 from diff_match_patch import diff_match_patch
 DMP = diff_match_patch()
@@ -129,13 +129,15 @@ def show_edits(date, edits, area_id):
     sl.draw()
     while 1:
         kn = curses.keyname(sl.window.getch())
-        if kn == 'q':
+        if kn in Config.general_keys['quit']:
+            raise WLQuit
+        if kn in Config.general_keys['quit_mode']:
             break
         if kn == 'KEY_RESIZE':
             ScreenManager.resize()
         if sl.hidden:
             continue
-        elif kn in ('^J', 'e'):
+        elif kn in Config.edits_keys['open']:
             index = sl.get_current_index()
             fn = save_tmp_version(date, edits, index)
             edit_file(fn)

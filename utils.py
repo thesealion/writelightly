@@ -5,6 +5,9 @@ import re
 class WLError(Exception):
     """Base class for all Writelightly exceptions."""
 
+class WLQuit(WLError):
+    """Raised when user sends a quit command."""
+
 def lastday(*args):
     """Return the last day of the given month.
 

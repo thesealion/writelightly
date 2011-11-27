@@ -21,6 +21,10 @@ default_config = {
 }
 
 default_keys = {
+    'general': {
+        'quit_mode': 'q',
+        'quit': 'Q',
+    },
     'calendar': {
         'left': ['h', 'KEY_LEFT'],
         'right': ['l', 'KEY_RIGHT'],
@@ -55,6 +59,9 @@ default_keys = {
         'search': ['/'],
         'find_next': ['n'],
         'find_prev': ['N'],
+    },
+    'edits': {
+        'open': ['^J', 'o'],
     },
 }
 
