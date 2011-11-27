@@ -4,9 +4,11 @@ import random
 import shutil
 import unittest
 
-from writelightly import conf
+from writelightly.conf import Config
 from writelightly.metadata import Metadata
 from writelightly.utils import lastday
+
+conf = Config.general
 
 class TestMetadata(unittest.TestCase):
 
@@ -33,15 +35,15 @@ class TestMetadata(unittest.TestCase):
         test_dir = cd
         while os.path.exists(test_dir):
             test_dir = os.path.join(cd, self._gen_name())
-        self.dir = test_dir
-        conf.data_dir = test_dir
-        conf.entries_dir = os.path.join(test_dir, 'entries')
-        conf.metadata_dir = os.path.join(test_dir, 'metadata')
+        self.orig_conf = conf.copy()
+        conf['data_dir'] = test_dir
+        conf['entries_dir'] = os.path.join(test_dir, 'entries')
+        conf['metadata_dir'] = os.path.join(test_dir, 'metadata')
 
         today = datetime.date.today()
         start = datetime.date(today.year, today.month, 1)
         stop = datetime.date(today.year, today.month, lastday(today))
-        month_dir = os.path.join(conf.entries_dir, today.strftime('%Y-%m'))
+        month_dir = os.path.join(conf['entries_dir'], today.strftime('%Y-%m'))
         os.makedirs(month_dir)
         while start <= stop:
             path = os.path.join(month_dir, start.strftime('%d'))
@@ -50,12 +52,13 @@ class TestMetadata(unittest.TestCase):
             start += datetime.timedelta(days=1)
 
     def tearDown(self):
-        shutil.rmtree(self.dir)
+        shutil.rmtree(conf['data_dir'])
+        conf.update(self.orig_conf)
 
     def _check_entries(self, year, month, metadata, should_fail=[]):
         start = datetime.date(year, month, 1)
         stop = datetime.date(year, month, lastday(year, month))
-        month_dir = os.path.join(conf.entries_dir, start.strftime('%Y-%m'))
+        month_dir = os.path.join(conf['entries_dir'], start.strftime('%Y-%m'))
         while start <= stop:
             path = os.path.join(month_dir, start.strftime('%d'))
             with open(path) as f:
@@ -78,7 +81,7 @@ class TestMetadata(unittest.TestCase):
 
         date = datetime.date(today.year, today.month,
                              random.randint(1, lastday(today)))
-        month_dir = os.path.join(conf.entries_dir, date.strftime('%Y-%m'))
+        month_dir = os.path.join(conf['entries_dir'], date.strftime('%Y-%m'))
         path = os.path.join(month_dir, date.strftime('%d'))
         with open(path) as f:
             lines = f.read().split('\n')

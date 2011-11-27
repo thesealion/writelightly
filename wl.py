@@ -5,6 +5,7 @@ import sys
 import textwrap
 
 from writelightly.calendar import Calendar, lastday
+from writelightly.conf import Config
 from writelightly.edit import (edit_date, get_edits, edit_file,
         save_tmp_version, clean_tmp, show_edits)
 from writelightly.metadata import Metadata
@@ -26,59 +27,65 @@ def show_calendar():
     ScreenManager.draw_all()
     d = cal.get_current_date()
     text_area.show_text(metadata.text(d.day))
+    keys = Config.calendar_keys
     while 1:
-        c = cal.window.getch()
-        if c == ord('q'):
+        try:
+            kn = curses.keyname(cal.window.getch())
+        except KeyboardInterrupt:
             break
-        if c == curses.KEY_RESIZE:
+        except ValueError:
+            continue
+        if kn == 'q':
+            break
+        if kn == 'KEY_RESIZE':
             ScreenManager.resize()
         if cal.hidden:
             continue
-        if c in (ord('h'), curses.KEY_LEFT):
+        if kn in keys['left']:
             moved = cal.move_left()
             if not moved:
                 cal = cal.get_previous_calendar()
                 cal.draw()
                 metadata = Metadata.get(cal.year, cal.month)
             text_area.show_text(metadata.text(cal.get_current_day()))
-        elif c in (ord('l'), curses.KEY_RIGHT):
+        elif kn in keys['right']:
             moved = cal.move_right()
             if not moved:
                 cal = cal.get_next_calendar()
                 cal.draw()
                 metadata = Metadata.get(cal.year, cal.month)
             text_area.show_text(metadata.text(cal.get_current_day()))
-        elif c in (ord('j'), curses.KEY_DOWN):
+        elif kn in keys['down']:
             cal.move_down()
             text_area.show_text(metadata.text(cal.get_current_day()))
-        elif c in (ord('k'), curses.KEY_UP):
+        elif kn in keys['up']:
             cal.move_up()
             text_area.show_text(metadata.text(cal.get_current_day()))
-        elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
+        elif kn in keys['edit']:
             date = cal.get_current_date()
             edit_date(date)
             metadata.load_day(date.day)
             cal.set_active(entry_exists(date))
             text_area.show_text(metadata.text(date.day))
-        elif c in (ord('t'),):
+        elif kn in keys['tags']:
             show_tags(cal.area_id, text_area)
             ScreenManager.restore_area(cal.area_id)
             cal.reinit()
             text_area.set_title()
             text_area.show_text(metadata.text(cal.get_current_day()))
-        elif c in (ord('d'),):
+        elif kn in keys['edits']:
             date = cal.get_current_date()
             edits = get_edits(date)
             if edits:
                 show_edits(date, edits, text_area.area_id)
                 ScreenManager.restore_area(text_area.area_id)
                 text_area.show_text(metadata.text(date.day))
-        elif c in (ord('H'),):
+        elif kn in keys['prev_month']:
             cal = cal.get_previous_calendar(cal.get_current_day())
             cal.draw()
             metadata = Metadata.get(cal.year, cal.month)
             text_area.show_text(metadata.text(cal.get_current_day()))
-        elif c in (ord('L'),):
+        elif kn in keys['next_month']:
             cal = cal.get_next_calendar(cal.get_current_day())
             cal.draw()
             metadata = Metadata.get(cal.year, cal.month)

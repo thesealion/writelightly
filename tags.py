@@ -2,13 +2,15 @@ import curses
 import datetime
 import os
 import sys
-import conf
 
-from writelightly.edit import edit_date
+from writelightly.conf import Config
+from writelightly.edit import edit_date, get_edits, show_edits
 from writelightly.metadata import Metadata, format_date
 from writelightly.screen import ScreenManager, TextArea, ScreenError
 from writelightly.scrollable_list import ScrollableList
 from writelightly.utils import get_all_months, WLError
+
+conf = Config.general
 
 import locale
 locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
@@ -20,7 +22,7 @@ def show_tags(area_id=None, text_area=None):
 
     tags = {}
 
-    for year, month in get_all_months(conf.data_dir):
+    for year, month in get_all_months(conf['data_dir']):
         m = Metadata.get(year, month)
         for tag, days in m.tags.items():
             for day in days:
@@ -46,14 +48,19 @@ def show_tags(area_id=None, text_area=None):
         text_area.show_text(Metadata.get(d.year, d.month).text(d.day))
     tag_info(sl.get_current_index())
     while 1:
-        c = sl.window.getch()
-        if c == ord('q'):
+        try:
+            kn = curses.keyname(sl.window.getch())
+        except KeyboardInterrupt:
             break
-        if c == curses.KEY_RESIZE:
+        except ValueError:
+            continue
+        if kn == 'q':
+            break
+        if kn == 'KEY_RESIZE':
             ScreenManager.resize()
         if sl.hidden:
             continue
-        elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
+        elif kn in Config.tags_keys['details']:
             tag, dates = items[sl.get_current_index()]
             show_date_list(tag, dates, sl.area_id, text_area)
             ScreenManager.restore_area(sl.area_id)
@@ -61,7 +68,7 @@ def show_tags(area_id=None, text_area=None):
             text_area.set_title('Last entry:')
             tag_info(sl.get_current_index())
         else:
-            sl.handle_keypress(c)
+            sl.handle_keypress(kn)
             tag_info(sl.get_current_index())
     Metadata.write_all()
 
@@ -76,29 +83,31 @@ def show_date_list(tag, dates, area_id=None, text_area=None):
     text_area.set_title()
     text_area.show_text(metadata.text(date.day))
     while 1:
-        c = sl.window.getch()
-        if curses.keyname(c) == '^O' or c == ord('q'):
+        try:
+            kn = curses.keyname(sl.window.getch())
+        except KeyboardInterrupt:
             break
-        if c == curses.KEY_RESIZE:
+        if kn in ('^O', 'q'):
+            break
+        if kn == 'KEY_RESIZE':
             ScreenManager.resize()
         if sl.hidden:
             continue
-        if c in (curses.KEY_ENTER, ord('e'), ord('\n')):
+        if kn in Config.tag_details_keys['edit']:
             date = dates[sl.get_current_index()]
             edit_date(date)
             sl.draw()
             metadata.load_day(date.day)
             text_area.show_text(metadata.text(date.day))
-        elif c in (ord('d'),):
+        elif kn in Config.tag_details_keys['edits']:
             date = dates[sl.get_current_index()]
-            from writelightly.edit import get_edits, show_edits
             edits = get_edits(date)
             if edits:
                 show_edits(date, edits, text_area.area_id)
                 ScreenManager.restore_area(text_area.area_id)
                 text_area.show_text(metadata.text(date.day))
         else:
-            sl.handle_keypress(c)
+            sl.handle_keypress(kn)
             date = dates[sl.get_current_index()]
             metadata = Metadata.get(date.year, date.month)
             text_area.show_text(metadata.text(date.day))
@@ -106,7 +115,7 @@ def show_date_list(tag, dates, area_id=None, text_area=None):
 
 def show_tag(tag):
     dates = []
-    for year, month in get_all_months(conf.data_dir):
+    for year, month in get_all_months(conf['data_dir']):
         m = Metadata.get(year, month)
         if tag in m.tags:
             for day in m.tags[tag]:

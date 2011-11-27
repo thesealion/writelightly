@@ -2,9 +2,11 @@ import datetime
 import os
 import yaml
 
-from writelightly import conf
+from writelightly.conf import Config
 from writelightly.edit import get_edits
 from writelightly.utils import lastday, format_size, format_date, format_time
+
+conf = Config.general
 
 class Metadata(object):
     instances = {}
@@ -28,7 +30,7 @@ class Metadata(object):
             obj.write()
 
     def get_path(self):
-        return os.path.join(conf.metadata_dir, '%d-%d' % (self.year, self.month))
+        return os.path.join(conf['metadata_dir'], '%d-%d' % (self.year, self.month))
 
     def _load(self):
         try:
@@ -48,7 +50,7 @@ class Metadata(object):
 
     def load_day(self, day):
         date = datetime.date(self.year, self.month, day)
-        month_dir = os.path.join(conf.entries_dir, date.strftime('%Y-%m'))
+        month_dir = os.path.join(conf['entries_dir'], date.strftime('%Y-%m'))
         path = os.path.join(month_dir, date.strftime('%d'))
 
         lines, words, tags = 0, 0, []
@@ -57,9 +59,9 @@ class Metadata(object):
                 for line in f:
                     if not line.strip():
                         continue
-                    if line.startswith(conf.tags_label):
+                    if line.startswith(conf['tags_label']):
                         tags += [b.strip() for b in
-                            line[len(conf.tags_label):].split(',')]
+                            line[len(conf['tags_label']):].split(',')]
                         continue
                     lines += 1
                     words += len(line.split())
@@ -91,7 +93,7 @@ class Metadata(object):
 
     def write(self):
         try:
-            os.mkdir(conf.metadata_dir)
+            os.mkdir(conf['metadata_dir'])
         except OSError:
             pass
         if self._dirty:

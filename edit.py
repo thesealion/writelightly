@@ -4,20 +4,22 @@ import subprocess
 import tempfile
 import time
 
-from writelightly import conf
+from writelightly.conf import Config
 from writelightly.utils import WLError
 
 from diff_match_patch import diff_match_patch
 DMP = diff_match_patch()
 
+conf = Config.general
+
 class InvalidDataDir(WLError):
     pass
 
 def edit_file(path):
-    return subprocess.call('%s %s' % (conf.editor, path), shell=True)
+    return subprocess.call('%s %s' % (conf['editor'], path), shell=True)
 
 def edit_date(date):
-    month_dir = os.path.join(conf.entries_dir, date.strftime('%Y-%m'))
+    month_dir = os.path.join(conf['entries_dir'], date.strftime('%Y-%m'))
     try:
         os.makedirs(month_dir)
     except OSError:
@@ -35,7 +37,7 @@ def edit_date(date):
 
     exit_code = edit_file(path)
 
-    diff_dir = os.path.join(conf.diffs_dir, date.strftime('%Y-%m'))
+    diff_dir = os.path.join(conf['diffs_dir'], date.strftime('%Y-%m'))
     try:
         os.makedirs(diff_dir)
     except OSError:
@@ -63,7 +65,7 @@ def get_diff(one, two):
     return DMP.patch_toText(patches)
 
 def get_edits(date):
-    diff_dir = os.path.join(conf.diffs_dir, date.strftime('%Y-%m'))
+    diff_dir = os.path.join(conf['diffs_dir'], date.strftime('%Y-%m'))
     try:
         ld = os.listdir(diff_dir)
     except OSError:
@@ -76,12 +78,12 @@ def get_edits(date):
     return sorted(zip(timestamps, sizes))
 
 def save_tmp_version(date, edits, index):
-    diff_dir = os.path.join(conf.diffs_dir, date.strftime('%Y-%m'))
+    diff_dir = os.path.join(conf['diffs_dir'], date.strftime('%Y-%m'))
     fn = date.strftime('%d')
     tmp = os.path.join(diff_dir, '%s_%d.tmp' % (fn, edits[index][0]))
     if os.path.exists(tmp):
         return tmp
-    month_dir = os.path.join(conf.entries_dir, date.strftime('%Y-%m'))
+    month_dir = os.path.join(conf['entries_dir'], date.strftime('%Y-%m'))
     path = os.path.join(month_dir, fn)
     with open(path) as f:
         text = f.read()
@@ -94,7 +96,7 @@ def save_tmp_version(date, edits, index):
         f.write(text)
     return tmp
 
-def clean_tmp(d=conf.diffs_dir):
+def clean_tmp(d=conf['diffs_dir']):
     for fn in os.listdir(d):
         path = os.path.join(d, fn)
         if os.path.isdir(path):
@@ -113,16 +115,17 @@ def show_edits(date, edits, area_id):
     sl = ScrollableList(formatted, area_id=area_id)
     sl.draw()
     while 1:
-        c = sl.window.getch()
-        if c == ord('q'):
+        kn = curses.keyname(sl.window.getch())
+        if kn == 'q':
             break
-        if c == curses.KEY_RESIZE:
+        if kn == 'KEY_RESIZE':
             ScreenManager.resize()
         if sl.hidden:
             continue
-        elif c in (curses.KEY_ENTER, ord('e'), ord('\n')):
+        elif kn in ('^J', 'e'):
             index = sl.get_current_index()
             fn = save_tmp_version(date, edits, index)
             edit_file(fn)
+            sl.draw()
         else:
-            sl.handle_keypress(c)
+            sl.handle_keypress(kn)

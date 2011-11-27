@@ -2,6 +2,7 @@ import curses
 import curses.ascii
 from textwrap import wrap
 
+from writelightly.conf import Config
 from writelightly.screen import ScreenManager, ScreenError, ScreenArea
 from writelightly.textinput import TextInput
 from writelightly.utils import get_char, WLError
@@ -218,44 +219,42 @@ class ScrollableList(ScreenArea):
             elif reverse and start < 0:
                 start = last
 
-    def handle_keypress(self, char):
-        try:
-            kn = curses.keyname(char)
-        except ValueError:
-            kn = ''
-        if char in (ord('j'), curses.KEY_DOWN):
+    def handle_keypress(self, kn):
+        keys = Config.list_keys
+        if kn in keys['down']:
             self.move_down()
-        elif char in (ord('k'), curses.KEY_UP):
+        elif kn in keys['up']:
             self.move_up()
-        elif kn == '^E':
+        elif kn in keys['scroll_down']:
             self.scroll_down()
-        elif kn == '^Y':
+        elif kn in keys['scroll_up']:
             self.scroll_up()
-        elif char in (ord('g'), curses.KEY_HOME):
+        elif kn in keys['top']:
             self.move_to_top()
-        elif char in (ord('G'), curses.KEY_END):
+        elif kn in keys['bottom']:
             self.move_to_bottom()
-        elif kn in ('^F', 'KEY_NPAGE'):
+        elif kn in keys['page_down']:
             self.scroll_screen_down()
-        elif kn in ('^B', 'KEY_PPAGE'):
+        elif kn in keys['page_up']:
             self.scroll_screen_up()
-        elif kn == '^D':
+        elif kn in keys['halfpage_down']:
             self.scroll_halfscreen_down()
-        elif kn == '^U':
+        elif kn in keys['halfpage_up']:
             self.scroll_halfscreen_up()
-        elif char in (ord('n'), ord('N')):
+        elif kn in keys['find_next'] + keys['find_prev']:
             if not self.term:
                 return
             a, b = self.current + 1, self.current - 1
-            if char == ord('n'):
+            if kn in keys['find_next']:
                 params = (a, b)
             else:
                 params = (b, a, True)
             for index, line in self.get_items(*params):
-                if line.lower().startswith(self.term):
+                #if line.lower().startswith(self.term):
+                if self.term in line.lower():
                     self._goto(index)
                     break
-        elif char == ord('/'):
+        elif kn in keys['search']:
             self.handle_search()
 
     def handle_search(self):
@@ -278,10 +277,14 @@ class ScrollableList(ScreenArea):
             except KeyboardInterrupt:
                 self._goto(initial)
                 break
-            if ch in (curses.KEY_ENTER, ord('\n')):
+            try:
+                kn = curses.keyname(ch)
+            except TypeError:
+                kn = ''
+            if kn == '^J':
                 self.term = t.gather()[1:].lower()
                 break
-            elif ch == curses.KEY_RESIZE:
+            elif kn == 'KEY_RESIZE':
                 self.resize()
                 tw = curses.newwin(1, maxx, self.window.getbegyx()[0] +
                     self.window.getmaxyx()[0], 0)
@@ -297,7 +300,8 @@ class ScrollableList(ScreenArea):
                 self._goto(initial)
             found = False
             for index, line in self.get_items(initial, initial - 1):
-                if line.lower().startswith(pat):
+                #if line.lower().startswith(pat):
+                if pat in line.lower():
                     found = True
                     self._goto(index)
                     break

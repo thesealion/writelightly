@@ -128,6 +128,12 @@ class CommandsManager(object):
 
 commands = CommandsManager()
 
+def keyname(code):
+    ch = chr(code)
+    if ch == '\n':
+        return '^J'
+    return ch
+
 def patch_curses():
     if getattr(curses, 'patched', False):
         return
@@ -139,7 +145,8 @@ def patch_curses():
     curses.nocbreak = lambda: None
     curses.echo = lambda: None
     curses.endwin = lambda: None
-    curses.keyname = lambda c: c
+    curses.keyname = keyname
+    curses.start_color = lambda: None
     curses.patched = True
 
 

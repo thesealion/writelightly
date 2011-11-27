@@ -109,7 +109,7 @@ class TestScrollableList(unittest.TestCase):
         for i in range(3):
             lines.insert(random.randint(y, 299 + i), prefix + lines1[i][3:])
         indices = [ind for ind, line in enumerate(lines)
-                if line.startswith(prefix)]
+                if prefix in line]
         sl = ScrollableList(lines)
         ScreenManager.draw_all()
         commands.add([ord(c) for c in prefix])
@@ -120,16 +120,16 @@ class TestScrollableList(unittest.TestCase):
             index = next_index()
             self.assertEquals(sl.get_current_index(), index)
             self.assertTrue(lines[index] in map(screen.get_line, range(y)))
-            sl.handle_keypress(ord('n'))
+            sl.handle_keypress('n')
         sl.move_to_bottom()
-        if not screen.get_line(-1).startswith(prefix):
-            sl.handle_keypress(ord('N'))
+        if prefix not in screen.get_line(-1):
+            sl.handle_keypress('N')
         previous_index = itertools.cycle(reversed(indices)).next
         for i in range(10):
             index = previous_index()
             self.assertEquals(sl.get_current_index(), index)
             self.assertTrue(lines[index] in map(screen.get_line, range(y)))
-            sl.handle_keypress(ord('N'))
+            sl.handle_keypress('N')
 
     def test_resize(self):
         lines = get_random_lines()

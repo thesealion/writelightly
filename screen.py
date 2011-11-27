@@ -4,6 +4,8 @@ from abc import ABCMeta, abstractmethod
 from itertools import izip
 from textwrap import wrap
 
+from writelightly.conf import Config
+
 class ScreenManager(object):
     @classmethod
     def init(cls):
@@ -15,6 +17,8 @@ class ScreenManager(object):
             curses.curs_set(0)
         except curses.error:
             pass
+        if Config.general['color']:
+            curses.start_color()
         cls.screen = screen
         cls.areas = []
         cls.areas_stack = {}
