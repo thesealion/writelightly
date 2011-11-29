@@ -132,7 +132,7 @@ def wrapper(func, with_screen=False):
         if error is not None:
             sys.stderr.write('%s\n' % error)
 
-if __name__ == '__main__':
+def main():
     from getopt import getopt, GetoptError
     from functools import partial
 
