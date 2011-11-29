@@ -1,6 +1,6 @@
 import datetime
 import os
-import yaml
+import pickle
 
 from writelightly.conf import Config
 from writelightly.edit import get_edits
@@ -46,7 +46,7 @@ class Metadata(object):
         """Load data from a file saved earlier or directly from entries."""
         try:
             with open(self.get_path()) as f:
-                loaded = yaml.load(f)
+                loaded = pickle.load(f)
                 self.data, self.tags = loaded['data'], loaded['tags']
         except IOError:
             for day in range(1, lastday(self.year, self.month) + 1):
@@ -118,7 +118,7 @@ class Metadata(object):
         if self._dirty:
             self._load_tags()
             with open(self.get_path(), 'w') as f:
-                yaml.dump({'data': self.data, 'tags': self.tags}, f)
+                pickle.dump({'data': self.data, 'tags': self.tags}, f)
             self._dirty = False
 
     def text(self, day):
