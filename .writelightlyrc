@@ -1,0 +1,46 @@
+[general]
+#data_dir = ~/.wl
+tags_label = TAGS:
+color = yes
+#editor = vim
+
+[general_keys]
+quit_mode = q
+quit = Q
+
+[calendar_keys]
+down = j KEY_DOWN
+edits = d
+right = l KEY_RIGHT
+tags = t
+edit = e ^J
+prev_month = H
+up = k KEY_UP
+next_month = L
+left = h KEY_LEFT
+
+[edits_keys]
+open = ^J o
+
+[list_keys]
+page_down = ^F KEY_NPAGE
+scroll_up = ^Y
+find_prev = N
+page_up = ^B KEY_PPAGE
+scroll_down = ^E
+down = j KEY_DOWN
+search = /
+bottom = G KEY_END
+top = g KEY_HOME
+up = k KEY_UP
+halfpage_down = ^D
+halfpage_up = ^U
+find_next = n
+
+[tags_keys]
+details = ^J
+
+[tag_details_keys]
+edit = e ^J
+edits = d
+
