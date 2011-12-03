@@ -1,7 +1,5 @@
 import curses
 import datetime
-import os
-import sys
 
 from writelightly.conf import Config
 from writelightly.edit import edit_date, get_edits, show_edits
@@ -33,6 +31,8 @@ def show_tags(area_id=None, text_area=None):
                 except KeyError:
                     tags[tag] = [date]
 
+    if not tags:
+        raise WLError('No tags found')
     items = sorted(sorted(tags.items(), key=lambda i: i[0]),
                    key=lambda i: len(i[1]), reverse=True)
     tl = ['%s (%d)' % (item[0], len(item[1])) for item in items]

@@ -1,6 +1,5 @@
 import curses
 import random
-import unittest
 
 class Screen(object):
     def __init__(self, maxy, maxx):

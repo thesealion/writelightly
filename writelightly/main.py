@@ -1,19 +1,14 @@
 import curses
 import datetime
-import os
 import sys
-import textwrap
 
-from writelightly.calendar import Calendar, lastday
+from writelightly.calendar import Calendar
 from writelightly.conf import Config
-from writelightly.edit import (edit_date, get_edits, edit_file,
-        save_tmp_version, clean_tmp, show_edits)
+from writelightly.edit import edit_date, get_edits, clean_tmp, show_edits
 from writelightly.metadata import Metadata
 from writelightly.screen import ScreenManager, TextArea
-from writelightly.scrollable_list import ScrollableList
 from writelightly.tags import show_tags, show_tag
-from writelightly.utils import (entry_exists, parse_date, format_time,
-        format_size, WLError, WLQuit)
+from writelightly.utils import entry_exists, parse_date, WLError, WLQuit
 
 import locale
 locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))

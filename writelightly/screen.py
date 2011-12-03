@@ -1,5 +1,4 @@
 import curses
-import sys
 from abc import ABCMeta, abstractmethod
 from itertools import izip
 from textwrap import wrap

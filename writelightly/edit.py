@@ -1,7 +1,6 @@
 import os
 import shutil
 import subprocess
-import tempfile
 import time
 
 from writelightly.conf import Config
@@ -46,7 +45,7 @@ def edit_date(date):
     else:
         new = True
 
-    exit_code = edit_file(path)
+    edit_file(path)
 
     diff_name = os.path.join(diff_dir, '%s_%d' % (fn, time.time()))
     if new:

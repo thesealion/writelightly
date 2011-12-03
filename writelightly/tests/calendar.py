@@ -18,7 +18,7 @@ class TestCalendar(unittest.TestCase):
 
     def test_current_month_cal(self):
         today = datetime.date.today()
-        cal = Calendar(today.year, today.month, today.day)
+        Calendar(today.year, today.month, today.day)
         ScreenManager.draw_all()
 
         # check the first line

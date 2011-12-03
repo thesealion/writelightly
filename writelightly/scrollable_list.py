@@ -19,6 +19,8 @@ class ScrollableList(ScreenArea):
 
     def __init__(self, lines, heading=None, *args, **kwargs):
         """Initialize from a list of lines and an optional heading."""
+        if not lines:
+            raise ScrollableListError('Empty input')
         super(ScrollableList, self).__init__(*args, **kwargs)
         self.window.keypad(1)
         y, x = self.window.getmaxyx()
