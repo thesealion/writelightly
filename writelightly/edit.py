@@ -19,6 +19,8 @@ class InvalidDataDir(WLError):
 
 def edit_file(path):
     """Call up an external editor specified in config to edit a file."""
+    from writelightly.screen import ScreenManager
+    ScreenManager.editor_called()
     return subprocess.call('%s %s' % (conf['editor'], path), shell=True)
 
 def edit_date(date):

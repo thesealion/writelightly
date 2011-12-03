@@ -28,6 +28,7 @@ class ScreenManager(object):
         cls.screen = screen
         cls.areas = []
         cls.areas_stack = {}
+        cls.reset_on_quit = False
 
     @classmethod
     def _calc(cls, exclude=[]):
@@ -156,6 +157,13 @@ class ScreenManager(object):
         curses.echo()
         curses.curs_set(1)
         curses.endwin()
+        if cls.reset_on_quit:
+            import subprocess
+            subprocess.call('reset')
+
+    @classmethod
+    def editor_called(cls):
+        cls.reset_on_quit = True
 
 class ScreenArea(object):
     """Abstract class representing an area on the screen. Base for all areas.
