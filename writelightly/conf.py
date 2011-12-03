@@ -4,17 +4,11 @@ import os
 home_dir = os.path.expanduser('~')
 
 data_dir = os.path.join(home_dir, '.wl')
-entries_dir = os.path.join(data_dir, 'entries')
-diffs_dir = os.path.join(data_dir, 'diffs')
-metadata_dir = os.path.join(data_dir, 'metadata')
 
 default_config = {
     'general': {
         'data_dir': data_dir,
-        'entries_dir': entries_dir,
-        'diffs_dir': diffs_dir,
-        'metadata_dir': metadata_dir,
-        'editor': os.environ.get('EDITOR', 'vim'),
+        'editor': os.environ.get('EDITOR', os.environ.get('VISUAL', 'vim')),
         'tags_label': 'TAGS:',
         'color': True,
     },
@@ -79,8 +73,17 @@ class ConfigManager(object):
                     self.config[section] = {}
                 value = self._process_value(section, value)
                 self.config[section][param] = value
+        self._add_dynamic_values()
 
-    def _process_value(self, section, value):
+    def _add_dynamic_values(self):
+        section = self.general
+        for label in ('entries', 'diffs', 'metadata'):
+            dn = '%s_dir' % label
+            if dn not in section:
+                section[dn] = os.path.join(section['data_dir'], label)
+
+    @staticmethod
+    def _process_value(section, value):
         if section.endswith('_keys'):
             return value.split()
         if value in ('yes', 'no'):
