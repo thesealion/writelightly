@@ -9,6 +9,7 @@ setup(
     author='Sergey Morozov',
     author_email='sealion@charadeyouare.org',
     packages=['writelightly', 'writelightly.tests'],
+    py_modules=['diff_match_patch'],
     scripts=['wl'],
     url='http://writelightly.com/',
     description='Console based personal journal/diary manager.',
