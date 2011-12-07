@@ -77,13 +77,17 @@ def get_edits(date):
     try:
         ld = os.listdir(diff_dir)
     except OSError:
-        raise InvalidDataDir(diff_dir)
+        ld = []
     day = date.strftime('%d')
     timestamps = [int(fn.split('_')[1]) for fn in ld if fn.startswith(day)
         and not fn.endswith('.tmp')]
     sizes = [os.path.getsize(os.path.join(diff_dir, '%s_%d' % (day, ts)))
         for ts in timestamps]
-    return sorted(zip(timestamps, sizes))
+    edits = sorted(zip(timestamps, sizes))
+    entry = os.path.join(conf['entries_dir'], date.strftime('%Y-%m'), day)
+    if (edits and edits[0][1] != 0) or (not edits and os.path.exists(entry)):
+        edits = [(None, None)] + edits
+    return edits
 
 def save_tmp_version(date, edits, index):
     """Get an old version of an entry.
@@ -92,8 +96,13 @@ def save_tmp_version(date, edits, index):
     apply needed diffs, save the result to a file and return its name.
     """
     diff_dir = os.path.join(conf['diffs_dir'], date.strftime('%Y-%m'))
+    try:
+        os.makedirs(diff_dir)
+    except OSError:
+        pass
     fn = date.strftime('%d')
-    tmp = os.path.join(diff_dir, '%s_%d.tmp' % (fn, edits[index][0]))
+    l = edits[index][0] if edits[index][0] else 'created'
+    tmp = os.path.join(diff_dir, '%s_%s.tmp' % (fn, l))
     if os.path.exists(tmp):
         return tmp
     month_dir = os.path.join(conf['entries_dir'], date.strftime('%Y-%m'))
@@ -112,7 +121,11 @@ def save_tmp_version(date, edits, index):
 
 def clean_tmp(d=conf['diffs_dir']):
     """Delete all temporary files from a directory."""
-    for fn in os.listdir(d):
+    try:
+        files = os.listdir(d)
+    except OSError:
+        return
+    for fn in files:
         path = os.path.join(d, fn)
         if os.path.isdir(path):
             clean_tmp(path)

@@ -111,6 +111,8 @@ def get_char(win):
 
 def format_time(ts, full=False):
     """Format a timestamp relatively to the current time."""
+    if not ts:
+        return 'unknown'
     dt = datetime.datetime.fromtimestamp(ts)
     today = datetime.date.today()
     fmt = ' '.join(filter(None, [
