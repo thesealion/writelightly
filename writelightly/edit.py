@@ -65,9 +65,10 @@ def edit_date(date):
 
 def get_diff(one, two):
     """Get diff between two texts as a string using diff_match_patch"""
-    diffs = DMP.diff_main(one, two)
+    p = [t if isinstance(t, unicode) else t.decode('utf-8') for t in (one, two)]
+    diffs = DMP.diff_main(*p)
     DMP.diff_cleanupSemantic(diffs)
-    patches = DMP.patch_make(one, diffs)
+    patches = DMP.patch_make(p[0], diffs)
     return DMP.patch_toText(patches)
 
 def get_edits(date):
@@ -103,7 +104,8 @@ def save_tmp_version(date, edits, index):
         diff_name = os.path.join(diff_dir, '%s_%d' % (fn, ts))
         with open(diff_name) as f:
             patches = DMP.patch_fromText(f.read())
-            text = DMP.patch_apply(patches, text)[0]
+            applied = DMP.patch_apply(patches, text.decode('utf-8'))
+            text = applied[0].encode('utf-8')
     with open(tmp, 'w') as f:
         f.write(text)
     return tmp
